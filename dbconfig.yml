@@ -1,0 +1,4 @@
+development:
+    dialect: postgres
+    datasource: postgres://forna_user:12345@localhost:5432/forna
+    dir: migrations
