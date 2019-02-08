@@ -9,6 +9,8 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+
+	"strconv"
 )
 
 func main() {
@@ -31,19 +33,25 @@ func main() {
 	})
 	router.HandleFunc("/animes", func(w http.ResponseWriter, r *http.Request) {
 		client := &http.Client{}
-		resp, err := client.Get("https://shikimori.org/api/animes")
-		if err != nil {
-			panic(err)
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			panic(err)
-		}
 		animes := &[]Anime{}
-		json.Unmarshal(body, animes)
-		db.Exec("INSERT INTO anime (external_id, name) VALUES ($1, $2)", (*animes)[0].ID, (*animes)[0].Name)
-		w.Write(body)
+		page := 1
+		for len(*animes) == 50 || page == 1 {
+			resp, err := client.Get("https://shikimori.org/api/animes?page=" + strconv.Itoa(page) + "&limit=50")
+			if err != nil {
+				panic(err)
+			}
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				panic(err)
+			}
+			json.Unmarshal(body, animes)
+			for i := 0; i < len(*animes); i++ {
+				db.Exec("INSERT INTO anime (external_id, name) VALUES ($1, $2)", (*animes)[i].ID, (*animes)[i].Name)
+			}
+			page++
+		}
+		w.Write(nil)
 	})
 	http.Handle("/", router)
 	listenandserveErr := http.ListenAndServe(":10045", nil)
