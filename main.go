@@ -11,15 +11,44 @@ import (
 	_ "github.com/lib/pq"
 
 	"strconv"
+
+	"time"
+
+	"github.com/tkanos/gonfig"
 )
+
+type Configuration struct {
+	DatabaseUrl        string `json:"databaseUrl"`
+	MaxOpenConnections int    `json:"maxOpenConnections"`
+	MaxIdleConnections int    `json:"maxIdleConnections"`
+	ConnectionTimeout  int    `json:"connectionTimeout"`
+}
 
 func main() {
 
-	fmt.Println("added basic code and dep tools to control dependencies")
-	db, err := sql.Open("postgres", "postgres://forna_user:12345@localhost:5432/forna")
+	fmt.Println("Application has been runned")
+	fmt.Println("Loading configuration...")
+	configuration := Configuration{}
+	gonfigErr := gonfig.GetConf("configuration.json", &configuration)
+	if gonfigErr != nil {
+		panic(gonfigErr)
+	}
+	db, err := sql.Open("postgres", configuration.DatabaseUrl)
 	if err != nil {
 		panic(err)
 	}
+	db.SetMaxIdleConns(configuration.MaxIdleConnections)
+	db.SetMaxOpenConns(configuration.MaxIdleConnections)
+	timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
+	timeoutDuration, durationErr := time.ParseDuration(timeout)
+	if durationErr != nil {
+		fmt.Println("Error parsing of timeout parameter")
+		panic(durationErr)
+	} else {
+		db.SetConnMaxLifetime(timeoutDuration)
+	}
+
+	fmt.Println("Configuration has been loaded")
 	defer db.Close()
 	pingErr := db.Ping()
 	if pingErr != nil {
