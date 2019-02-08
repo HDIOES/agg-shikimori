@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -26,6 +28,22 @@ func main() {
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "hello, 4na")
+	})
+	router.HandleFunc("/animes", func(w http.ResponseWriter, r *http.Request) {
+		client := &http.Client{}
+		resp, err := client.Get("https://shikimori.org/api/animes")
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		animes := &[]Anime{}
+		json.Unmarshal(body, animes)
+		db.Exec("INSERT INTO ANIME (ID, NAME) VALUES ($1, $2)", (*animes)[0].ID, (*animes)[0].Name)
+		w.Write(body)
 	})
 	http.Handle("/", router)
 	listenandserveErr := http.ListenAndServe(":10045", nil)
