@@ -42,7 +42,7 @@ func main() {
 		}
 		animes := &[]Anime{}
 		json.Unmarshal(body, animes)
-		db.Exec("INSERT INTO ANIME (ID, NAME) VALUES ($1, $2)", (*animes)[0].ID, (*animes)[0].Name)
+		db.Exec("INSERT INTO anime (external_id, name) VALUES ($1, $2)", (*animes)[0].ID, (*animes)[0].Name)
 		w.Write(body)
 	})
 	http.Handle("/", router)
