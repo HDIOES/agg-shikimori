@@ -21,6 +21,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:ed615c5430ecabbb0fb7629a182da65ecee6523900ac1ac932520860878ffcad"
+  name = "github.com/robfig/cron"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b41be1df696709bb6395fe435af20370037c0b4c"
+  version = "v1.1"
+
+[[projects]]
   digest = "1:dc48dff981a895912c33cf272b1d869c216d058bd4025736cb481d3ceeed6872"
   name = "github.com/tkanos/gonfig"
   packages = ["."]
@@ -34,6 +42,7 @@
   input-imports = [
     "github.com/gorilla/mux",
     "github.com/lib/pq",
+    "github.com/robfig/cron",
     "github.com/tkanos/gonfig",
   ]
   solver-name = "gps-cdcl"

@@ -14,6 +14,7 @@ import (
 
 	"time"
 
+	"github.com/robfig/cron"
 	"github.com/tkanos/gonfig"
 )
 
@@ -38,7 +39,7 @@ func main() {
 		panic(err)
 	}
 	db.SetMaxIdleConns(configuration.MaxIdleConnections)
-	db.SetMaxOpenConns(configuration.MaxIdleConnections)
+	db.SetMaxOpenConns(configuration.MaxOpenConnections)
 	timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
 	timeoutDuration, durationErr := time.ParseDuration(timeout)
 	if durationErr != nil {
@@ -50,6 +51,13 @@ func main() {
 
 	fmt.Println("Configuration has been loaded")
 	defer db.Close()
+	fmt.Println("Job running...")
+	cronRunner := cron.New()
+	shikimoriJob := &ShikimoriJob{db: db}
+	cronRunner.AddJob("@daily", shikimoriJob)
+	cronRunner.Start()
+
+	fmt.Println("Job has been runned")
 	pingErr := db.Ping()
 	if pingErr != nil {
 		panic(pingErr)
@@ -61,30 +69,37 @@ func main() {
 		fmt.Fprint(w, "hello, 4na")
 	})
 	router.HandleFunc("/animes", func(w http.ResponseWriter, r *http.Request) {
-		client := &http.Client{}
-		animes := &[]Anime{}
-		page := 1
-		for len(*animes) == 50 || page == 1 {
-			resp, err := client.Get("https://shikimori.org/api/animes?page=" + strconv.Itoa(page) + "&limit=50")
-			if err != nil {
-				panic(err)
-			}
-			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				panic(err)
-			}
-			json.Unmarshal(body, animes)
-			for i := 0; i < len(*animes); i++ {
-				db.Exec("INSERT INTO anime (external_id, name) VALUES ($1, $2)", (*animes)[i].ID, (*animes)[i].Name)
-			}
-			page++
-		}
 		w.Write(nil)
 	})
 	http.Handle("/", router)
 	listenandserveErr := http.ListenAndServe(":10045", nil)
 	if listenandserveErr != nil {
 		panic(err)
+	}
+}
+
+type ShikimoriJob struct {
+	db *sql.DB
+}
+
+func (sj *ShikimoriJob) Run() {
+	client := &http.Client{}
+	animes := &[]Anime{}
+	page := 1
+	for len(*animes) == 50 || page == 1 {
+		resp, err := client.Get("https://shikimori.org/api/animes?page=" + strconv.Itoa(page) + "&limit=50")
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		json.Unmarshal(body, animes)
+		for i := 0; i < len(*animes); i++ {
+			sj.db.Exec("INSERT INTO anime (external_id, name) VALUES ($1, $2)", (*animes)[i].ID, (*animes)[i].Name)
+		}
+		page++
 	}
 }

@@ -1,6 +1,6 @@
 {
     "databaseUrl": "postgres://forna_user:12345@localhost:5432/forna",
     "maxOpenConnections": 20,
-    "maxIdleConnections": 0,
+    "maxIdleConnections": 5,
     "connectionTimeout": 60
 }
