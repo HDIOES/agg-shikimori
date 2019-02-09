@@ -69,7 +69,7 @@ func main() {
 		fmt.Fprint(w, "hello, 4na")
 	})
 	router.HandleFunc("/animes", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(nil)
+		shikimoriJob.Run()
 	})
 	http.Handle("/", router)
 	listenandserveErr := http.ListenAndServe(":10045", nil)
