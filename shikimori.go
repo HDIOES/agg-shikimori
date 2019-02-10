@@ -24,37 +24,42 @@ func (sj *ShikimoriJob) Run() {
 		handleTxError(txErr, tx)
 		resp, err := client.Get("https://shikimori.org/api/animes?page=" + strconv.Itoa(page) + "&limit=50")
 		handleTxError(err, tx)
-		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		handleTxError(err, tx)
 		parseError := json.Unmarshal(body, animes)
 		handleTxErrorWithAnimesArrays(parseError, tx, animes, &body)
 		for i := 0; i < len(*animes); i++ {
-			var airedOn *string = nil
-			if (*animes)[i].AiredOn != nil {
-				airedOn = (*animes)[i].AiredOn.toDateValue()
+			rows, txExecSelectErr := tx.Query("SELECT external_id FROM ANIME WHERE external_id = $1", (*animes)[i].ID)
+			handleTxError(txExecSelectErr, tx)
+			if !rows.Next() {
+				var airedOn *string = nil
+				if (*animes)[i].AiredOn != nil {
+					airedOn = (*animes)[i].AiredOn.toDateValue()
+				}
+				var releasedOn *string = nil
+				if (*animes)[i].ReleasedOn != nil {
+					releasedOn = (*animes)[i].ReleasedOn.toDateValue()
+				}
+				_, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on) "+
+					"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+					(*animes)[i].ID,
+					(*animes)[i].Name,
+					(*animes)[i].Russian,
+					(*animes)[i].URL,
+					(*animes)[i].Kind,
+					(*animes)[i].Status,
+					(*animes)[i].Episodes,
+					(*animes)[i].EpisodesAired,
+					airedOn,
+					releasedOn)
+				handleTxError(txExecErr, tx)
 			}
-			var releasedOn *string = nil
-			if (*animes)[i].ReleasedOn != nil {
-				releasedOn = (*animes)[i].ReleasedOn.toDateValue()
-			}
-			_, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on) " +
-				"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-				(*animes)[i].ID,
-				(*animes)[i].Name,
-				(*animes)[i].Russian,
-				(*animes)[i].URL,
-				(*animes)[i].Kind,
-				(*animes)[i].Status,
-				(*animes)[i].Episodes,
-				(*animes)[i].EpisodesAired,
-				airedOn,
-				releasedOn)
-			handleTxError(txExecErr, tx)
+			rows.Close()
 		}
 		page++
 		handleTxError(tx.Commit(), tx)
 		fmt.Println("Page with number " + strconv.Itoa(page) + " has been processed")
+		resp.Body.Close()
 		time.Sleep(2 * time.Second)
 	}
 	fmt.Println("Job has been ended")
