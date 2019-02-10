@@ -44,3 +44,8 @@ func (sts *ShikimoriTime) UnmarshalJSON(b []byte) (err error) {
 	sts.Time = t
 	return err
 }
+
+func (sts *ShikimoriTime) toDateValue() *string {
+	value := sts.Format("2006-01-02")
+	return &value
+}
