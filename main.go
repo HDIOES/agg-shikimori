@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -14,6 +15,8 @@ import (
 
 	"github.com/robfig/cron"
 	"github.com/tkanos/gonfig"
+
+	"math/rand"
 )
 
 type Configuration struct {
@@ -69,9 +72,44 @@ func main() {
 	router.HandleFunc("/animes", func(w http.ResponseWriter, r *http.Request) {
 		shikimoriJob.Run()
 	})
+	router.HandleFunc("/animes/random", func(w http.ResponseWriter, r *http.Request) {
+		rows, queryErr := db.Query("SELECT COUNT(*) FROM anime")
+		if queryErr != nil {
+			fmt.Println(queryErr)
+		}
+		defer rows.Close()
+		var count sql.NullInt64
+		if rows.Next() {
+			err := rows.Scan(&count)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		randowRowNumber := rand.Int63n(count.Int64) + 1
+		animeRows, animeRowsErr := db.Query("select russian, amine_url from (select row_number() over(), russian, amine_url from anime) as query where query.row_number = $1", randowRowNumber)
+		if animeRowsErr != nil {
+			fmt.Println(animeRowsErr)
+		}
+		defer animeRows.Close()
+		animeRo := &AnimeRO{}
+		if animeRows.Next() {
+			var russianName sql.NullString
+			var animeURL sql.NullString
+			animeRows.Scan(&russianName, &animeURL)
+			animeRo.Name = russianName.String
+			animeRo.URL = "https://shikimori.ru" + animeURL.String
+		}
+		json.NewEncoder(w).Encode(animeRo)
+	})
 	http.Handle("/", router)
 	listenandserveErr := http.ListenAndServe(":10045", nil)
 	if listenandserveErr != nil {
 		panic(err)
 	}
+}
+
+//AnimeRO is rest object
+type AnimeRO struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
