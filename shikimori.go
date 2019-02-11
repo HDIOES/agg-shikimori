@@ -40,8 +40,9 @@ func (sj *ShikimoriJob) Run() {
 				if (*animes)[i].ReleasedOn != nil {
 					releasedOn = (*animes)[i].ReleasedOn.toDateValue()
 				}
-				_, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on) "+
-					"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+				var posterURL string = (*animes)[i].Image.Original
+				_, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url) "+
+					"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
 					(*animes)[i].ID,
 					(*animes)[i].Name,
 					(*animes)[i].Russian,
@@ -51,7 +52,8 @@ func (sj *ShikimoriJob) Run() {
 					(*animes)[i].Episodes,
 					(*animes)[i].EpisodesAired,
 					airedOn,
-					releasedOn)
+					releasedOn,
+					posterURL)
 				handleTxError(txExecErr, tx)
 			}
 			rows.Close()

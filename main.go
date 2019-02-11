@@ -17,6 +17,8 @@ import (
 	"github.com/tkanos/gonfig"
 
 	"math/rand"
+
+	"github.com/gorilla/handlers"
 )
 
 type Configuration struct {
@@ -86,7 +88,7 @@ func main() {
 			}
 		}
 		randowRowNumber := rand.Int63n(count.Int64) + 1
-		animeRows, animeRowsErr := db.Query("select russian, amine_url from (select row_number() over(), russian, amine_url from anime) as query where query.row_number = $1", randowRowNumber)
+		animeRows, animeRowsErr := db.Query("select russian, amine_url, poster_url from (select row_number() over(), russian, amine_url, poster_url from anime) as query where query.row_number = $1", randowRowNumber)
 		if animeRowsErr != nil {
 			fmt.Println(animeRowsErr)
 		}
@@ -95,14 +97,20 @@ func main() {
 		if animeRows.Next() {
 			var russianName sql.NullString
 			var animeURL sql.NullString
-			animeRows.Scan(&russianName, &animeURL)
+			var posterURL sql.NullString
+			animeRows.Scan(&russianName, &animeURL, &posterURL)
 			animeRo.Name = russianName.String
-			animeRo.URL = "https://shikimori.ru" + animeURL.String
+			animeRo.URL = "https://shikimori.org" + animeURL.String
+			animeRo.PosterURL = "https://shikimori.org" + posterURL.String
 		}
 		json.NewEncoder(w).Encode(animeRo)
 	})
 	http.Handle("/", router)
-	listenandserveErr := http.ListenAndServe(":10045", nil)
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+
+	listenandserveErr := http.ListenAndServe(":10045", handlers.CORS(originsOk, headersOk, methodsOk)(router))
 	if listenandserveErr != nil {
 		panic(err)
 	}
@@ -110,6 +118,7 @@ func main() {
 
 //AnimeRO is rest object
 type AnimeRO struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	PosterURL string `json:"poster_url"`
 }
