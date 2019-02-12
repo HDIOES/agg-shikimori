@@ -2,7 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
+
 	"fmt"
 	"net/http"
 
@@ -16,9 +16,10 @@ import (
 	"github.com/robfig/cron"
 	"github.com/tkanos/gonfig"
 
-	"math/rand"
-
 	"github.com/gorilla/handlers"
+
+	"github.com/HDIOES/cpa-backend/integration"
+	animes "github.com/HDIOES/cpa-backend/rest/animes"
 )
 
 type Configuration struct {
@@ -29,7 +30,6 @@ type Configuration struct {
 }
 
 func main() {
-
 	fmt.Println("Application has been runned")
 	fmt.Println("Loading configuration...")
 	configuration := Configuration{}
@@ -56,7 +56,7 @@ func main() {
 	defer db.Close()
 	fmt.Println("Job running...")
 	cronRunner := cron.New()
-	shikimoriJob := &ShikimoriJob{db: db}
+	shikimoriJob := &integration.ShikimoriJob{Db: db}
 	cronRunner.AddJob("@daily", shikimoriJob)
 	cronRunner.Start()
 
@@ -68,43 +68,11 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "hello, 4na")
-	})
 	router.HandleFunc("/animes", func(w http.ResponseWriter, r *http.Request) {
 		shikimoriJob.Run()
 	})
-	router.HandleFunc("/animes/random", func(w http.ResponseWriter, r *http.Request) {
-		rows, queryErr := db.Query("SELECT COUNT(*) FROM anime")
-		if queryErr != nil {
-			fmt.Println(queryErr)
-		}
-		defer rows.Close()
-		var count sql.NullInt64
-		if rows.Next() {
-			err := rows.Scan(&count)
-			if err != nil {
-				fmt.Println(err)
-			}
-		}
-		randowRowNumber := rand.Int63n(count.Int64) + 1
-		animeRows, animeRowsErr := db.Query("select russian, amine_url, poster_url from (select row_number() over(), russian, amine_url, poster_url from anime) as query where query.row_number = $1", randowRowNumber)
-		if animeRowsErr != nil {
-			fmt.Println(animeRowsErr)
-		}
-		defer animeRows.Close()
-		animeRo := &AnimeRO{}
-		if animeRows.Next() {
-			var russianName sql.NullString
-			var animeURL sql.NullString
-			var posterURL sql.NullString
-			animeRows.Scan(&russianName, &animeURL, &posterURL)
-			animeRo.Name = russianName.String
-			animeRo.URL = "https://shikimori.org" + animeURL.String
-			animeRo.PosterURL = "https://shikimori.org" + posterURL.String
-		}
-		json.NewEncoder(w).Encode(animeRo)
-	})
+
+	router.Handle("/animes/random", animes.CreateAnimeHandler(db))
 	http.Handle("/", router)
 	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
@@ -114,11 +82,4 @@ func main() {
 	if listenandserveErr != nil {
 		panic(err)
 	}
-}
-
-//AnimeRO is rest object
-type AnimeRO struct {
-	Name      string `json:"name"`
-	URL       string `json:"url"`
-	PosterURL string `json:"poster_url"`
 }
