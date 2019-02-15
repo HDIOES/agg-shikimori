@@ -27,6 +27,7 @@ type Configuration struct {
 	MaxOpenConnections int    `json:"maxOpenConnections"`
 	MaxIdleConnections int    `json:"maxIdleConnections"`
 	ConnectionTimeout  int    `json:"connectionTimeout"`
+	Port               int    `json:"port"`
 }
 
 func main() {
@@ -78,7 +79,7 @@ func main() {
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 
-	listenandserveErr := http.ListenAndServe(":10045", handlers.CORS(originsOk, headersOk, methodsOk)(router))
+	listenandserveErr := http.ListenAndServe(":"+strconv.Itoa(configuration.Port), handlers.CORS(originsOk, headersOk, methodsOk)(router))
 	if listenandserveErr != nil {
 		panic(err)
 	}
