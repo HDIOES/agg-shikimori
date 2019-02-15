@@ -10,3 +10,4 @@ RUN go install github.com/HDIOES/cpa-backend
 RUN cp configuration.json $GOPATH/bin/
 WORKDIR $GOPATH/bin
 
+
