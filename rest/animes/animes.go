@@ -69,6 +69,9 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		fmt.Println(parseErr)
 	}
 	status, statusOk := vars["status"]
+	kind, kindOk := vars["kind"]
+	airedOn, airedOnOk := vars["aired_on"]
+
 	limit, limitOk := vars["limit"]
 	offset, offsetOk := vars["offset"]
 	animes := []AnimeRO{}
@@ -77,8 +80,18 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	countOfParameter := 0
 	if statusOk {
 		countOfParameter++
-		sqlQueryString += " AND status = $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime_status = $" + strconv.Itoa(countOfParameter)
 		args = append(args, status[0])
+	}
+	if kindOk {
+		countOfParameter++
+		sqlQueryString += " AND kind = $" + strconv.Itoa(countOfParameter)
+		args = append(args, kind[0])
+	}
+	if airedOnOk {
+		countOfParameter++
+		sqlQueryString += " AND aired_on = $" + strconv.Itoa(countOfParameter)
+		args = append(args, airedOn[0])
 	}
 	if limitOk {
 		countOfParameter++
