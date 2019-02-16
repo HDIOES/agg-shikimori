@@ -6,8 +6,9 @@ COPY Gopkg.toml Gopkg.lock ./
 COPY . ./
 RUN dep ensure
 RUN go install github.com/HDIOES/cpa-backend
-#here we need to apply sql migrations
+RUN sql-migrate up
 RUN cp configuration.json $GOPATH/bin/
 WORKDIR $GOPATH/bin
-
+RUN ./cpa-backend
+EXPOSE 10045
 
