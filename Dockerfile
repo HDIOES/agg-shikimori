@@ -9,6 +9,6 @@ RUN go install github.com/HDIOES/cpa-backend
 RUN sql-migrate up -env test
 RUN cp configuration.json $GOPATH/bin/
 WORKDIR $GOPATH/bin
-RUN ./cpa-backend
+ENTRYPOINT ["./cpa-backend"]
 EXPOSE 10045
 
