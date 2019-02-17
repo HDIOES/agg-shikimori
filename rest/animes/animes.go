@@ -71,6 +71,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	status, statusOk := vars["status"]
 	kind, kindOk := vars["kind"]
 	airedOn, airedOnOk := vars["aired_on"]
+	phrase, phraseOk := vars["phrase"]
 
 	limit, limitOk := vars["limit"]
 	offset, offsetOk := vars["offset"]
@@ -93,6 +94,12 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		sqlQueryString += " AND aired_on = $" + strconv.Itoa(countOfParameter)
 		args = append(args, airedOn[0])
 	}
+	if phraseOk {
+		countOfParameter++
+		sqlQueryString += " AND (lower(russian) ~ lower($" + strconv.Itoa(countOfParameter) + ")"
+		sqlQueryString += " OR lower(name) ~ lower($" + strconv.Itoa(countOfParameter) + "))"
+		args = append(args, phrase[0])
+	}
 	if limitOk {
 		countOfParameter++
 		sqlQueryString += " LIMIT $" + strconv.Itoa(countOfParameter)
@@ -109,6 +116,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		sqlQueryString += " OFFSET $" + strconv.Itoa(countOfParameter)
 		args = append(args, offset[0])
 	}
+	fmt.Println(sqlQueryString)
 	result, queryErr := as.Db.Query(sqlQueryString, args...)
 	if queryErr != nil {
 		fmt.Println(queryErr)
