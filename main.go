@@ -69,10 +69,6 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/animes", func(w http.ResponseWriter, r *http.Request) {
-		shikimoriJob.Run()
-	}).Methods("GET")
-
 	router.Handle("/animes/random", animes.CreateAnimeHandler(db)).
 		Methods("GET")
 
