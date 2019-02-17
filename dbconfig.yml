@@ -4,5 +4,5 @@ development:
     dir: migrations
 test:
     dialect: postgres
-    datasource: postgres://forna_user:12345@localhost:5433/forna
+    datasource: postgres://forna_user:12345@localhost:5432/forna
     dir: migrations    
