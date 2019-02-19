@@ -10,4 +10,3 @@ RUN sql-migrate up -env test
 RUN cp configuration.json $GOPATH/bin/
 WORKDIR $GOPATH/bin
 ENTRYPOINT ["./cpa-backend"]
-
