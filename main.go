@@ -75,6 +75,10 @@ func main() {
 	router.Handle("/animes/search", animes.CreateSearchAnimeHandler(db, router)).
 		Methods("GET")
 
+	router.HandleFunc("/animes/job", func(w http.ResponseWriter, r *http.Request) {
+		shikimoriJob.Run()
+	}).Methods("GET")
+
 	http.Handle("/", router)
 	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})

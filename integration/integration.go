@@ -17,6 +17,65 @@ type ShikimoriJob struct {
 
 func (sj *ShikimoriJob) Run() {
 	client := &http.Client{}
+	//at start we need to load studios and genres
+	studios := &[]Studio{}
+	studiosTx, txErr := sj.Db.Begin()
+	handleTxError(txErr, studiosTx)
+	resp, getStudioErr := client.Get("https://shikimori.org/api/studios")
+	handleTxError(getStudioErr, studiosTx)
+	body, err := ioutil.ReadAll(resp.Body)
+	handleTxError(err, studiosTx)
+	parseError := json.Unmarshal(body, studios)
+	handleTxError(parseError, studiosTx)
+	for i := 0; i < len(*studios); i++ {
+		rows, txExecSelectErr := studiosTx.Query("SELECT external_id FROM studio WHERE external_id = $1", (*studios)[i].ID)
+		handleTxError(txExecSelectErr, studiosTx)
+		if !rows.Next() {
+			_, txExecErr := studiosTx.Exec("INSERT INTO studio (external_id, studio_name, filtered_studio_name, is_real, image_url) "+
+				"VALUES ($1, $2, $3, $4, $5)",
+				(*studios)[i].ID,
+				(*studios)[i].Name,
+				(*studios)[i].FilteredName,
+				(*studios)[i].Real,
+				(*studios)[i].Image)
+			handleTxError(txExecErr, studiosTx)
+		}
+		rows.Close()
+	}
+	handleTxError(studiosTx.Commit(), studiosTx)
+	fmt.Println("Studios has been loaded")
+	resp.Body.Close()
+
+	time.Sleep(700 * time.Millisecond)
+
+	genres := &[]Genre{}
+	genresTx, genresTxErr := sj.Db.Begin()
+	handleTxError(genresTxErr, genresTx)
+	resp, getGenresErr := client.Get("https://shikimori.org/api/genres")
+	handleTxError(getGenresErr, genresTx)
+	body, readGenresErr := ioutil.ReadAll(resp.Body)
+	handleTxError(readGenresErr, genresTx)
+	parseGenresError := json.Unmarshal(body, genres)
+	handleTxError(parseGenresError, genresTx)
+	for i := 0; i < len(*genres); i++ {
+		rows, txExecSelectErr := genresTx.Query("SELECT external_id FROM genre WHERE external_id = $1", (*genres)[i].ID)
+		handleTxError(txExecSelectErr, genresTx)
+		if !rows.Next() {
+			_, txExecErr := genresTx.Exec("INSERT INTO genre (external_id, genre_name, russian, kind) "+
+				"VALUES ($1, $2, $3, $4)",
+				(*genres)[i].ID,
+				(*genres)[i].Name,
+				(*genres)[i].Russian,
+				(*genres)[i].Kind)
+			handleTxError(txExecErr, genresTx)
+		}
+		rows.Close()
+	}
+	handleTxError(genresTx.Commit(), genresTx)
+	fmt.Println("Genres has been loaded")
+	resp.Body.Close()
+
+	//then we have to load anime list
 	animes := &[]Anime{}
 	page := 1
 	for len(*animes) == 50 || page == 1 {
@@ -62,7 +121,7 @@ func (sj *ShikimoriJob) Run() {
 		handleTxError(tx.Commit(), tx)
 		fmt.Println("Page with number " + strconv.Itoa(page) + " has been processed")
 		resp.Body.Close()
-		time.Sleep(2 * time.Second)
+		time.Sleep(700 * time.Millisecond)
 	}
 	fmt.Println("Job has been ended")
 }
@@ -103,6 +162,23 @@ type Anime struct {
 	EpisodesAired int32          `json:"episodes_aired"`
 	AiredOn       *ShikimoriTime `json:"aired_on"`
 	ReleasedOn    *ShikimoriTime `json:"released_on"`
+}
+
+//Studio struct
+type Studio struct {
+	ID           int64  `json:"id"`
+	Name         string `json:"name"`
+	FilteredName string `json:"filtered_name"`
+	Real         bool   `json:"real"`
+	Image        string `json:"image"`
+}
+
+//Genre struct
+type Genre struct {
+	ID      int64  `json:"id"`
+	Name    string `json:"name"`
+	Russian string `json:"russian"`
+	Kind    string `json:"kind"`
 }
 
 //Image struct
