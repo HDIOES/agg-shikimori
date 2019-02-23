@@ -2,8 +2,8 @@ package main
 
 import (
 	"database/sql"
+	"log"
 
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -31,8 +31,9 @@ type Configuration struct {
 }
 
 func main() {
-	fmt.Println("Application has been runned")
-	fmt.Println("Loading configuration...")
+	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Llongfile)
+	log.Println("Application has been runned")
+	log.Println("Loading configuration...")
 	configuration := Configuration{}
 	gonfigErr := gonfig.GetConf("configuration.json", &configuration)
 	if gonfigErr != nil {
@@ -47,21 +48,21 @@ func main() {
 	timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
 	timeoutDuration, durationErr := time.ParseDuration(timeout)
 	if durationErr != nil {
-		fmt.Println("Error parsing of timeout parameter")
+		log.Println("Error parsing of timeout parameter")
 		panic(durationErr)
 	} else {
 		db.SetConnMaxLifetime(timeoutDuration)
 	}
 
-	fmt.Println("Configuration has been loaded")
+	log.Println("Configuration has been loaded")
 	defer db.Close()
-	fmt.Println("Job running...")
+	log.Println("Job running...")
 	cronRunner := cron.New()
 	shikimoriJob := &integration.ShikimoriJob{Db: db}
 	cronRunner.AddJob("@daily", shikimoriJob)
 	cronRunner.Start()
 
-	fmt.Println("Job has been runned")
+	log.Println("Job has been runned")
 	pingErr := db.Ping()
 	if pingErr != nil {
 		panic(pingErr)
@@ -76,7 +77,7 @@ func main() {
 		Methods("GET")
 
 	router.HandleFunc("/animes/job", func(w http.ResponseWriter, r *http.Request) {
-		shikimoriJob.Run()
+		go shikimoriJob.Run()
 	}).Methods("GET")
 
 	http.Handle("/", router)
