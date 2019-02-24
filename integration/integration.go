@@ -272,8 +272,8 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]An
 				releasedOn = (*animes)[i].ReleasedOn.toDateValue()
 			}
 			var posterURL = *((*animes)[i].Image.Original)
-			if _, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url) "+
-				"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+			if _, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed) "+
+				"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false)",
 				(*animes)[i].ID,
 				(*animes)[i].Name,
 				(*animes)[i].Russian,
