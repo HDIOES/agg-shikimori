@@ -3,12 +3,15 @@ package integration
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 )
+
+var NDD = errors.New("Database does not contains rows with processed = false") //'No database data' error
 
 type ShikimoriJob struct {
 	Db *sql.DB
@@ -22,15 +25,91 @@ func (sj *ShikimoriJob) Run() {
 	sj.ProcessGenres(client)
 	time.Sleep(700 * time.Millisecond)
 	//then we have to load anime list
-	animes := &[]Anime{}
+	/*animes := &[]Anime{}
 	var page int64 = 1
 	for len(*animes) == 50 || page == 1 {
 		animes = sj.ProcessAnimePatch(page, client)
 		page++
 		time.Sleep(700 * time.Millisecond)
-	}
+	}*/
 	//then we need to run long loading of animes by call url '/api/animes/:id'
+	for sj.ProcessOneAnime(client) != NDD {
+		time.Sleep(700 * time.Millisecond)
+	}
 	log.Println("Job has been ended")
+}
+
+//ProcessOneAnime function
+func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client) (err error) {
+	tx, txErr := sj.Db.Begin()
+	if txErr != nil {
+		log.Println("Transaction start failed: ", txErr)
+		return txErr
+	}
+	defer func(tx *sql.Tx) {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}(tx)
+	rows, txExecSelectErr := tx.Query("SELECT external_id FROM anime WHERE processed = false LIMIT 1")
+	if txExecSelectErr != nil {
+		log.Println("Query cannot be executed: ", txExecSelectErr)
+		err = txExecSelectErr
+		panic(txExecSelectErr)
+	}
+	var externlalID sql.NullInt64
+	if rows.Next() {
+		rows.Scan(&externlalID)
+	} else {
+		err = NDD
+		rows.Close()
+		panic(err)
+	}
+	rows.Close()
+	resp, getAnimeByIdErr := client.Get("https://shikimori.org/api/animes/" + strconv.FormatInt(externlalID.Int64, 10))
+	if getAnimeByIdErr != nil {
+		log.Println("Error during getting anime by id: ", getAnimeByIdErr)
+		err = getAnimeByIdErr
+		panic(getAnimeByIdErr)
+	}
+	defer resp.Body.Close()
+	anime := &Anime{}
+	body, readStudiosErr := ioutil.ReadAll(resp.Body)
+	if readStudiosErr != nil {
+		log.Println("Error during reading studios: ", readStudiosErr)
+		err = readStudiosErr
+		panic(readStudiosErr)
+	}
+	log.Println("Response body: ", string(body))
+	parseError := json.Unmarshal(body, anime)
+	if parseError != nil {
+		log.Println("Error during parsing anime: ", parseError)
+		err = parseError
+		panic(readStudiosErr)
+	}
+	//then we need to update row in database
+	var score *float64
+	floatScore, parseScoreErr := strconv.ParseFloat(*(anime.Score), 32)
+	if parseScoreErr != nil {
+		log.Println("Error during parsing score: ", parseScoreErr)
+		score = nil
+	} else {
+		score = &floatScore
+	}
+	_, execTxErr := tx.Exec("UPDATE anime SET score = $1, duration = $2, rating = $3, franchase = $4, processed = true WHERE external_id = $5",
+		score, anime.Duration, anime.Rating, anime.Franchise, externlalID.Int64)
+	if execTxErr != nil {
+		log.Println("Query cannot be executed: ", execTxErr)
+		err = execTxErr
+		panic(execTxErr)
+	}
+	if txCommitErr := tx.Commit(); txCommitErr != nil {
+		log.Println("Transaction cannot be commited: ", txCommitErr)
+		err = txCommitErr
+		panic(txCommitErr)
+	}
+	log.Println("Anime has been processed")
+	return nil
 }
 
 //ProcessGenres function
@@ -230,8 +309,8 @@ type Anime struct {
 	URL                *string                         `json:"url"`
 	Kind               *string                         `json:"kind"`
 	Status             *string                         `json:"status"`
-	Episodes           *int32                          `json:"episodes"`
-	EpisodesAired      *int32                          `json:"episodes_aired"`
+	Episodes           *int64                          `json:"episodes"`
+	EpisodesAired      *int64                          `json:"episodes_aired"`
 	AiredOn            *ShikimoriTime                  `json:"aired_on"`
 	ReleasedOn         *ShikimoriTime                  `json:"released_on"`
 	Rating             *string                         `json:"rating"`
@@ -239,8 +318,8 @@ type Anime struct {
 	Japanese           *[]string                       `json:"japanese"`
 	Synonyms           *[]string                       `json:"synonyms"`
 	LicenseNameRu      *string                         `json:"license_name_ru"`
-	Duration           *int8                           `json:"duration"`
-	Score              *float32                        `json:"score"`
+	Duration           *int64                          `json:"duration"`
+	Score              *string                         `json:"score"`
 	Description        *string                         `json:"description"`
 	DescriptionHTML    *string                         `json:"description_html"`
 	DescriptionSource  *string                         `json:"description_source"`
