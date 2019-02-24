@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"os"
 
 	"net/http"
 
@@ -34,6 +35,13 @@ func main() {
 	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Llongfile)
 	log.Println("Application has been runned")
 	log.Println("Loading configuration...")
+
+	file, err := os.OpenFile("cpa.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalln("Failed to open log file:", err)
+	}
+	log.SetOutput(file)
+
 	configuration := Configuration{}
 	gonfigErr := gonfig.GetConf("configuration.json", &configuration)
 	if gonfigErr != nil {
