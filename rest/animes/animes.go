@@ -3,11 +3,12 @@ package animes
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -24,20 +25,20 @@ type AnimeHandler struct {
 func (a *AnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rows, queryErr := a.Db.Query("SELECT COUNT(*) FROM anime")
 	if queryErr != nil {
-		fmt.Println(queryErr)
+		log.Println(queryErr)
 	}
 	defer rows.Close()
 	var count sql.NullInt64
 	if rows.Next() {
 		err := rows.Scan(&count)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 	}
 	randowRowNumber := rand.Int63n(count.Int64) + 1
 	animeRows, animeRowsErr := a.Db.Query("select russian, amine_url, poster_url from (select row_number() over(), russian, amine_url, poster_url from anime) as query where query.row_number = $1", randowRowNumber)
 	if animeRowsErr != nil {
-		fmt.Println(animeRowsErr)
+		log.Println(animeRowsErr)
 	}
 	defer animeRows.Close()
 	animeRo := &AnimeRO{}
@@ -66,12 +67,18 @@ type SearchAnimeHandler struct {
 func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars, parseErr := url.ParseQuery(r.URL.RawQuery)
 	if parseErr != nil {
-		fmt.Println(parseErr)
+		log.Println(parseErr)
 	}
 	status, statusOk := vars["status"]
 	kind, kindOk := vars["kind"]
-	airedOn, airedOnOk := vars["aired_on"]
 	phrase, phraseOk := vars["phrase"]
+	order, orderOK := vars["order"]
+	score, scoreOk := vars["score"]
+	duration, durationOk := vars["duration"]
+	rating, ratingOk := vars["rating"]
+	franchise, franchiseOk := vars["franchise"]
+	ids, idsOk := vars["ids"]
+	excludeIds, excludeIdsOk := vars["exclude_ids"]
 
 	limit, limitOk := vars["limit"]
 	offset, offsetOk := vars["offset"]
@@ -85,14 +92,88 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		args = append(args, status[0])
 	}
 	if kindOk {
-		countOfParameter++
-		sqlQueryString += " AND kind = $" + strconv.Itoa(countOfParameter)
-		args = append(args, kind[0])
+		var kinds = [...]string{"tv", "movie", "ova", "ona", "special", "music", "tv_13", "tv_24", "tv_48"}
+		for _, s := range kinds {
+			if s == kind[0] {
+				countOfParameter++
+				sqlQueryString += " AND kind = $" + strconv.Itoa(countOfParameter)
+				args = append(args, kind[0])
+				break
+			}
+		}
 	}
-	if airedOnOk {
+	if idsOk {
 		countOfParameter++
-		sqlQueryString += " AND aired_on = $" + strconv.Itoa(countOfParameter)
-		args = append(args, airedOn[0])
+		sqlQueryString += " AND external_id IN ($" + strconv.Itoa(countOfParameter)
+		var params = strings.Split(ids[0], ",")
+		args = append(args, params[0])
+		for ind, id := range params {
+			if ind == 0 {
+				continue
+			} else if ind == len(params)-1 {
+				countOfParameter++
+				sqlQueryString += ", $" + strconv.Itoa(countOfParameter)
+				args = append(args, id)
+			} else {
+				countOfParameter++
+				sqlQueryString += ", $" + strconv.Itoa(countOfParameter) + ", "
+				args = append(args, id)
+			}
+		}
+		sqlQueryString += ")"
+	}
+	//log.Panicln("query = " + sqlQueryString)
+	if excludeIdsOk {
+		countOfParameter++
+		sqlQueryString += " AND external_id NOT IN ($" + strconv.Itoa(countOfParameter)
+		var params = strings.Split(excludeIds[0], ",")
+		args = append(args, params[0])
+		for ind, excludeID := range params {
+			if ind == 0 {
+				continue
+			} else if ind == len(params)-1 {
+				countOfParameter++
+				sqlQueryString += ", $" + strconv.Itoa(countOfParameter)
+				args = append(args, excludeID)
+			} else {
+				countOfParameter++
+				sqlQueryString += ", $" + strconv.Itoa(countOfParameter) + ", "
+				args = append(args, excludeID)
+			}
+		}
+		sqlQueryString += ")"
+	}
+	if durationOk {
+		switch duration[0] {
+		case "S":
+			{
+				sqlQueryString += " AND duration < 10"
+			}
+		case "D":
+			{
+				sqlQueryString += " AND duration < 30"
+			}
+		case "F":
+			{
+				sqlQueryString += " AND duration >= 30"
+			}
+		}
+	}
+	if franchiseOk {
+		countOfParameter++
+		sqlQueryString += " AND franchase = $" + strconv.Itoa(countOfParameter)
+		args = append(args, franchise[0])
+	}
+	if ratingOk {
+		var ratings = [...]string{"none", "g", "pg", "pg_13", "r", "r_plus", "rx"}
+		for _, r := range ratings {
+			if r == rating[0] {
+				countOfParameter++
+				sqlQueryString += " AND rating = $" + strconv.Itoa(countOfParameter)
+				args = append(args, rating[0])
+				break
+			}
+		}
 	}
 	if phraseOk {
 		countOfParameter++
@@ -100,12 +181,58 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		sqlQueryString += " OR lower(name) ~ lower($" + strconv.Itoa(countOfParameter) + "))"
 		args = append(args, phrase[0])
 	}
+	if scoreOk {
+		//need to validate score
+		countOfParameter++
+		sqlQueryString += " AND score >= $" + strconv.Itoa(countOfParameter)
+		args = append(args, score[0])
+	}
+	if orderOK {
+		switch order[0] {
+		case "id":
+			{
+				countOfParameter++
+				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				args = append(args, "external_id")
+			}
+		case "kind":
+			{
+				countOfParameter++
+				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				args = append(args, "kind")
+			}
+		case "name":
+			{
+				countOfParameter++
+				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				args = append(args, "name")
+			}
+		case "aired_on":
+			{
+				countOfParameter++
+				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				args = append(args, "aired_on")
+			}
+		case "episodes":
+			{
+				countOfParameter++
+				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				args = append(args, "epizodes")
+			}
+		case "status":
+			{
+				countOfParameter++
+				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				args = append(args, "status")
+			}
+		}
+	}
 	if limitOk {
 		countOfParameter++
 		sqlQueryString += " LIMIT $" + strconv.Itoa(countOfParameter)
 		value, err := strconv.ParseInt(limit[0], 10, 0)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 		args = append(args, value)
 	} else {
@@ -116,10 +243,10 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		sqlQueryString += " OFFSET $" + strconv.Itoa(countOfParameter)
 		args = append(args, offset[0])
 	}
-	fmt.Println(sqlQueryString)
+	log.Println(sqlQueryString)
 	result, queryErr := as.Db.Query(sqlQueryString, args...)
 	if queryErr != nil {
-		fmt.Println(queryErr)
+		log.Println(queryErr)
 		panic(queryErr)
 	}
 	defer result.Close()
