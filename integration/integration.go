@@ -103,6 +103,63 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client) (err error) {
 		err = execTxErr
 		panic(execTxErr)
 	}
+	//and now let go to set genre for anime
+	for _, g := range *(anime.Genres) {
+		animeGenreRows, findGenreErr := tx.Query("SELECT anime_genre.anime_id, anime_genre.genre_id "+
+			"FROM anime_genre "+
+			"JOIN anime ON anime.id = anime_genre.anime_id "+
+			"JOIN genre ON genre.id = anime_genre.genre_id "+
+			"WHERE anime.external_id = $1 AND genre.external_id = $2",
+			strconv.FormatInt(*(anime.ID), 10),
+			strconv.FormatInt(*(g.ID), 10))
+		if findGenreErr != nil {
+			log.Println("Query cannot be executed: ", findGenreErr)
+			err = findGenreErr
+			panic(findGenreErr)
+		}
+		if !animeGenreRows.Next() {
+			animeGenreRows.Close()
+			//now we need insert missing genre
+			_, insertNewGenreForAnime := tx.Exec("INSERT INTO anime_genre (anime_id, genre_id) "+
+				"SELECT anime.id, genre.id FROM anime JOIN genre ON anime.external_id = $1 AND genre.external_id = $2",
+				strconv.FormatInt(*(anime.ID), 10),
+				strconv.FormatInt(*(g.ID), 10))
+			if insertNewGenreForAnime != nil {
+				log.Println("Query cannot be executed: ", insertNewGenreForAnime)
+				err = insertNewGenreForAnime
+				panic(insertNewGenreForAnime)
+			}
+		} else {
+			animeGenreRows.Close()
+		}
+	}
+	//let go to set studio for anime
+	for _, s := range *(anime.Studios) {
+		animeStudioRows, findStudioErr := tx.Query("SELECT anime_studio.anime_id, anime_studio.studio_id FROM anime_studio "+
+			"join anime on anime.id = anime_studio.anime_id join studio on studio.id = anime_studio.studio_id WHERE anime.external_id = $1 AND studio.external_id = $2",
+			strconv.FormatInt(*(anime.ID), 10),
+			strconv.FormatInt(*(s.ID), 10))
+		if findStudioErr != nil {
+			log.Println("Query cannot be executed: ", findStudioErr)
+			err = findStudioErr
+			panic(findStudioErr)
+		}
+		if !animeStudioRows.Next() {
+			animeStudioRows.Close()
+			//now we need insert missing studio
+			_, insertNewStudioForAnime := tx.Exec("INSERT INTO anime_studio SELECT anime.id, studio.id FROM anime JOIN studio ON anime.external_id = $1 AND studio.external_id = $2",
+				strconv.FormatInt(*(anime.ID), 10),
+				strconv.FormatInt(*(s.ID), 10))
+			if insertNewStudioForAnime != nil {
+				log.Println("Query cannot be executed: ", insertNewStudioForAnime)
+				err = insertNewStudioForAnime
+				panic(insertNewStudioForAnime)
+			}
+		} else {
+			animeStudioRows.Close()
+		}
+	}
+
 	if txCommitErr := tx.Commit(); txCommitErr != nil {
 		log.Println("Transaction cannot be commited: ", txCommitErr)
 		err = txCommitErr
