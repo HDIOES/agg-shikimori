@@ -21,20 +21,20 @@ func (sj *ShikimoriJob) Run() {
 	client := &http.Client{}
 	//at start we need to load studios and genres
 	sj.ProcessStudios(client)
-	time.Sleep(700 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	sj.ProcessGenres(client)
-	time.Sleep(700 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	//then we have to load anime list
 	animes := &[]Anime{}
 	var page int64 = 1
 	for len(*animes) == 50 || page == 1 {
 		animes = sj.ProcessAnimePatch(page, client)
 		page++
-		time.Sleep(700 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
 	}
 	//then we need to run long loading of animes by call url '/api/animes/:id'
 	for sj.ProcessOneAnime(client) != NDD {
-		time.Sleep(700 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
 	}
 	log.Println("Job has been ended")
 }
