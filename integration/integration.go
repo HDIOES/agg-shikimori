@@ -33,40 +33,53 @@ func (sj *ShikimoriJob) Run() {
 		time.Sleep(1000 * time.Millisecond)
 	}
 	//then we need to run long loading of animes by call url '/api/animes/:id'
-	for sj.ProcessOneAnime(client) != NDD {
+	var externalAnimeIDs, err = sj.GetNotProcessedExternalAnimeIds()
+	if err != nil {
+		log.Println("Error getting of anime ids: ", err)
+		return
+	}
+	for _, eID := range *externalAnimeIDs {
+		processOneAmineErr := sj.ProcessOneAnime(client, eID)
+		if processOneAmineErr != nil {
+			log.Println("Error getting of anime: ", processOneAmineErr)
+		}
 		time.Sleep(1000 * time.Millisecond)
 	}
 	log.Println("Job has been ended")
 }
 
+func (sj *ShikimoriJob) GetNotProcessedExternalAnimeIds() (externalAnimeIDs *[]string, err error) {
+	getAnimeIdsRows, getAnimeIdsErr := sj.Db.Query("SELECT external_id FROM anime WHERE processed = false")
+	if getAnimeIdsErr != nil {
+		log.Println("Error getting of anime ids: ", getAnimeIdsErr)
+		return nil, getAnimeIdsErr
+	}
+	defer getAnimeIdsRows.Close()
+	var ids []string
+	var externlalID sql.NullString
+	for getAnimeIdsRows.Next() {
+		getAnimeIdsRows.Scan(&externlalID)
+		ids = append(ids, externlalID.String)
+	}
+	return &ids, nil
+}
+
 //ProcessOneAnime function
-func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client) (err error) {
+func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) (err error) {
 	tx, txErr := sj.Db.Begin()
 	if txErr != nil {
 		log.Println("Transaction start failed: ", txErr)
-		return txErr
+		err = txErr
+		return
 	}
 	defer func(tx *sql.Tx) {
 		if r := recover(); r != nil {
 			tx.Rollback()
 		}
 	}(tx)
-	rows, txExecSelectErr := tx.Query("SELECT external_id FROM anime WHERE processed = false LIMIT 1")
-	if txExecSelectErr != nil {
-		log.Println("Query cannot be executed: ", txExecSelectErr)
-		err = txExecSelectErr
-		panic(txExecSelectErr)
-	}
-	var externlalID sql.NullInt64
-	if rows.Next() {
-		rows.Scan(&externlalID)
-	} else {
-		err = NDD
-		rows.Close()
-		panic(err)
-	}
-	rows.Close()
-	resp, getAnimeByIdErr := client.Get("https://shikimori.org/api/animes/" + strconv.FormatInt(externlalID.Int64, 10))
+
+	log.Println("Now we will process anime with external_id = " + eID)
+	resp, getAnimeByIdErr := client.Get("https://shikimori.org/api/animes/" + eID)
 	if getAnimeByIdErr != nil {
 		log.Println("Error during getting anime by id: ", getAnimeByIdErr)
 		err = getAnimeByIdErr
@@ -96,8 +109,8 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client) (err error) {
 	} else {
 		score = &floatScore
 	}
-	_, execTxErr := tx.Exec("UPDATE anime SET score = $1, duration = $2, rating = $3, franchase = $4, processed = true WHERE external_id = $5",
-		score, anime.Duration, anime.Rating, anime.Franchise, externlalID.Int64)
+	_, execTxErr := tx.Exec("UPDATE anime SET score = $1, duration = $2, rating = $3, franchase = $4, processed = true, lastmodifytime = now() WHERE external_id = $5",
+		score, anime.Duration, anime.Rating, anime.Franchise, eID)
 	if execTxErr != nil {
 		log.Println("Query cannot be executed: ", execTxErr)
 		err = execTxErr
@@ -166,7 +179,7 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client) (err error) {
 		panic(txCommitErr)
 	}
 	log.Println("Anime has been processed")
-	return nil
+	return
 }
 
 //ProcessGenres function
@@ -329,8 +342,8 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]An
 				releasedOn = (*animes)[i].ReleasedOn.toDateValue()
 			}
 			var posterURL = *((*animes)[i].Image.Original)
-			if _, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed) "+
-				"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false)",
+			if _, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed, lastmodifytime) "+
+				"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, now())",
 				(*animes)[i].ID,
 				(*animes)[i].Name,
 				(*animes)[i].Russian,
