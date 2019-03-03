@@ -74,6 +74,8 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	phrase, phraseOk := vars["phrase"]
 	order, orderOK := vars["order"]
 	score, scoreOk := vars["score"]
+	genre, genreOk := vars["genre"]
+	studio, studioOk := vars["studio"]
 	duration, durationOk := vars["duration"]
 	rating, ratingOk := vars["rating"]
 	franchise, franchiseOk := vars["franchise"]
@@ -84,11 +86,60 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	offset, offsetOk := vars["offset"]
 	animes := []AnimeRO{}
 	args := make([]interface{}, 0)
-	sqlQueryString := "SELECT russian, amine_url, poster_url FROM anime WHERE 1=1"
+	sqlQueryString := "SELECT anime.russian, anime.amine_url, anime.poster_url FROM anime"
 	countOfParameter := 0
+	if genreOk {
+		sqlQueryString += " JOIN anime_genre ON anime.id = anime_genre.anime_id" +
+			" JOIN genre ON genre.id = anime_genre.genre_id"
+	}
+	if studioOk {
+		sqlQueryString += " JOIN anime_studio ON anime.id = anime_studio.anime_id" +
+			" JOIN studio ON studio.id = anime_studio.studio_id"
+	}
+	sqlQueryString += " WHERE 1=1"
+	if genreOk {
+		countOfParameter++
+		sqlQueryString += " AND genre.external_id IN ($" + strconv.Itoa(countOfParameter)
+		var params = strings.Split(genre[0], ",")
+		args = append(args, params[0])
+		for ind, genreExternalID := range params {
+			if ind == 0 {
+				continue
+			} else if ind == len(params)-1 {
+				countOfParameter++
+				sqlQueryString += ", $" + strconv.Itoa(countOfParameter)
+				args = append(args, genreExternalID)
+			} else {
+				countOfParameter++
+				sqlQueryString += ", $" + strconv.Itoa(countOfParameter) + ", "
+				args = append(args, genreExternalID)
+			}
+		}
+		sqlQueryString += ")"
+	}
+	if studioOk {
+		countOfParameter++
+		sqlQueryString += " AND studio.external_id IN ($" + strconv.Itoa(countOfParameter)
+		var params = strings.Split(studio[0], ",")
+		args = append(args, params[0])
+		for ind, studioExternalID := range params {
+			if ind == 0 {
+				continue
+			} else if ind == len(params)-1 {
+				countOfParameter++
+				sqlQueryString += ", $" + strconv.Itoa(countOfParameter)
+				args = append(args, studioExternalID)
+			} else {
+				countOfParameter++
+				sqlQueryString += ", $" + strconv.Itoa(countOfParameter) + ", "
+				args = append(args, studioExternalID)
+			}
+		}
+		sqlQueryString += ")"
+	}
 	if statusOk {
 		countOfParameter++
-		sqlQueryString += " AND anime_status = $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime.anime_status = $" + strconv.Itoa(countOfParameter)
 		args = append(args, status[0])
 	}
 	if kindOk {
@@ -96,7 +147,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		for _, s := range kinds {
 			if s == kind[0] {
 				countOfParameter++
-				sqlQueryString += " AND kind = $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += " AND anime.kind = $" + strconv.Itoa(countOfParameter)
 				args = append(args, kind[0])
 				break
 			}
@@ -104,7 +155,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if idsOk {
 		countOfParameter++
-		sqlQueryString += " AND external_id IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime.external_id IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(ids[0], ",")
 		args = append(args, params[0])
 		for ind, id := range params {
@@ -125,7 +176,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	//log.Panicln("query = " + sqlQueryString)
 	if excludeIdsOk {
 		countOfParameter++
-		sqlQueryString += " AND external_id NOT IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime.external_id NOT IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(excludeIds[0], ",")
 		args = append(args, params[0])
 		for ind, excludeID := range params {
@@ -147,21 +198,21 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		switch duration[0] {
 		case "S":
 			{
-				sqlQueryString += " AND duration < 10"
+				sqlQueryString += " AND anime.duration < 10"
 			}
 		case "D":
 			{
-				sqlQueryString += " AND duration < 30"
+				sqlQueryString += " AND anime.duration < 30"
 			}
 		case "F":
 			{
-				sqlQueryString += " AND duration >= 30"
+				sqlQueryString += " AND anime.duration >= 30"
 			}
 		}
 	}
 	if franchiseOk {
 		countOfParameter++
-		sqlQueryString += " AND franchase = $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime.franchase = $" + strconv.Itoa(countOfParameter)
 		args = append(args, franchise[0])
 	}
 	if ratingOk {
@@ -169,7 +220,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		for _, r := range ratings {
 			if r == rating[0] {
 				countOfParameter++
-				sqlQueryString += " AND rating = $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += " AND anime.rating = $" + strconv.Itoa(countOfParameter)
 				args = append(args, rating[0])
 				break
 			}
@@ -177,14 +228,14 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if phraseOk {
 		countOfParameter++
-		sqlQueryString += " AND (lower(russian) ~ lower($" + strconv.Itoa(countOfParameter) + ")"
-		sqlQueryString += " OR lower(name) ~ lower($" + strconv.Itoa(countOfParameter) + "))"
+		sqlQueryString += " AND (lower(anime.russian) ~ lower($" + strconv.Itoa(countOfParameter) + ")"
+		sqlQueryString += " OR lower(anime.name) ~ lower($" + strconv.Itoa(countOfParameter) + "))"
 		args = append(args, phrase[0])
 	}
 	if scoreOk {
 		//need to validate score
 		countOfParameter++
-		sqlQueryString += " AND score >= $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime.score >= $" + strconv.Itoa(countOfParameter)
 		args = append(args, score[0])
 	}
 	if orderOK {
@@ -193,37 +244,37 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			{
 				countOfParameter++
 				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "external_id")
+				args = append(args, "anime.external_id")
 			}
 		case "kind":
 			{
 				countOfParameter++
 				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "kind")
+				args = append(args, "anime.kind")
 			}
 		case "name":
 			{
 				countOfParameter++
 				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "name")
+				args = append(args, "anime.name")
 			}
 		case "aired_on":
 			{
 				countOfParameter++
 				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "aired_on")
+				args = append(args, "anime.aired_on")
 			}
 		case "episodes":
 			{
 				countOfParameter++
 				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "epizodes")
+				args = append(args, "anime.epizodes")
 			}
 		case "status":
 			{
 				countOfParameter++
 				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "status")
+				args = append(args, "anime.status")
 			}
 		}
 	}
