@@ -21,6 +21,7 @@ import (
 
 	"github.com/HDIOES/cpa-backend/integration"
 	animes "github.com/HDIOES/cpa-backend/rest/animes"
+	genres "github.com/HDIOES/cpa-backend/rest/genres"
 )
 
 type Configuration struct {
@@ -87,6 +88,9 @@ func main() {
 	router.HandleFunc("/animes/job", func(w http.ResponseWriter, r *http.Request) {
 		go shikimoriJob.Run()
 	}).Methods("GET")
+
+	router.Handle("/genres/search", genres.CreateGenreHandler(db)).
+		Methods("GET")
 
 	http.Handle("/", router)
 	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
