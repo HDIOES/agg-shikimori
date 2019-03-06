@@ -22,6 +22,7 @@ import (
 	"github.com/HDIOES/cpa-backend/integration"
 	animes "github.com/HDIOES/cpa-backend/rest/animes"
 	genres "github.com/HDIOES/cpa-backend/rest/genres"
+	"github.com/HDIOES/cpa-backend/rest/studios"
 )
 
 type Configuration struct {
@@ -90,6 +91,9 @@ func main() {
 	}).Methods("GET")
 
 	router.Handle("/genres/search", genres.CreateGenreHandler(db)).
+		Methods("GET")
+
+	router.Handle("/studios/search", studios.CreateStudioHandler(db)).
 		Methods("GET")
 
 	http.Handle("/", router)
