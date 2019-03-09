@@ -25,9 +25,14 @@ func (g *StudioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	limit, limitOk := vars["limit"]
 	offset, offsetOk := vars["offset"]
+	//phrase, phraseOk := vars["phrase"]
 	sqlQueryString := "SELECT external_id, studio_name, filtered_studio_name FROM studio WHERE 1=1"
 	countOfParameter := 0
 	args := make([]interface{}, 0)
+	/*if phraseOk {
+		args = append(args, phrase[0])
+		countOfParameter++
+	}*/
 	if offsetOk {
 		args = append(args, offset[0])
 		countOfParameter++
