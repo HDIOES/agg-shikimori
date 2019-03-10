@@ -1,7 +1,27 @@
 
 -- +migrate Up
-CREATE OR REPLACE FUNCTION LOWENSTAIN_DISTANCE(S1 VARCHAR(255), S2 VARCHAR(255))
- RETURNS INT AS $$
+-- +migrate StatementBegin
+CREATE OR REPLACE FUNCTION MIN3(m1 INT, m2 INT, m3 INT) RETURNS INT AS $$
+ BEGIN
+  IF m1 > m2 THEN
+   IF m3 > m2 THEN
+    RETURN m2;
+   ELSE
+    RETURN m3;
+   END IF;
+  ELSE
+   IF m1 > m3 THEN
+    RETURN m3;
+   ELSE
+    RETURN m1;
+   END IF;
+  END IF;
+ END;
+$$
+LANGUAGE PLPGSQL;
+-- +migrate StatementEnd
+-- +migrate StatementBegin
+CREATE OR REPLACE FUNCTION LOWENSTAIN_DISTANCE(S1 VARCHAR(255), S2 VARCHAR(255)) RETURNS INT AS $$
 DECLARE 
  countOfLetters INT;
  mas INT[][];
@@ -47,24 +67,7 @@ BEGIN
  END LOOP;
  RETURN mas[length1][length2];
 END;
-$$ LANGUAGE PLPGSQL;
-
-CREATE OR REPLACE FUNCTION MIN3(m1 INT, m2 INT, m3 INT)
- RETURNS INT AS $$
- BEGIN
-  IF m1 > m2 THEN
-   IF m3 > m2 THEN
-    RETURN m2;
-   ELSE
-    RETURN m3;
-   END IF;
-  ELSE
-   IF m1 > m3 THEN
-    RETURN m3;
-   ELSE
-    RETURN m1;
-   END IF;
-  END IF;
- END;
-$$ LANGUAGE PLPGSQL;
+$$
+LANGUAGE PLPGSQL;
+-- +migrate StatementEnd
 -- +migrate Down
