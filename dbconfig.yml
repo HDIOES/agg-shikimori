@@ -1,6 +1,6 @@
 development:
     dialect: postgres
-    datasource: postgres://forna_user:12345@localhost:5432/forna
+    datasource: postgres://forna_user:12345@localhost:5432/forna?sslmode=disable
     dir: migrations
 test:
     dialect: postgres
