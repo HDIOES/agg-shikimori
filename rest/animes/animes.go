@@ -96,6 +96,9 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		sqlQueryString += " JOIN anime_studio ON anime.id = anime_studio.anime_id" +
 			" JOIN studio ON studio.id = anime_studio.studio_id"
 	}
+	if phraseOk {
+		sqlQueryString += " JOIN ngramm ON anime.id = ngramm.anime_id"
+	}
 	sqlQueryString += " WHERE 1=1"
 	if genreOk {
 		countOfParameter++
@@ -227,10 +230,23 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if phraseOk {
-		countOfParameter++
-		sqlQueryString += " AND (lower(anime.russian) ~ lower($" + strconv.Itoa(countOfParameter) + ")"
-		sqlQueryString += " OR lower(anime.name) ~ lower($" + strconv.Itoa(countOfParameter) + "))"
-		args = append(args, phrase[0])
+		ngramms := []string{}
+		for _, word := range strings.Split(phrase[0], " ") {
+			for i := 0; i < len(word)-2; i++ {
+				ngramms = append(ngramms, word[i:i+3])
+			}
+		}
+		mas := "("
+		for i, ngrm := range ngramms {
+			countOfParameter++
+			mas += "$" + strconv.Itoa(countOfParameter)
+			if i != len(ngramms)-1 {
+				mas += ","
+			}
+			args = append(args, ngrm)
+		}
+		mas += ")"
+		sqlQueryString += " AND lower(ngramm.ngramm_value) IN " + mas
 	}
 	if scoreOk {
 		//need to validate score
