@@ -86,7 +86,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	offset, offsetOk := vars["offset"]
 	animes := []AnimeRO{}
 	args := make([]interface{}, 0)
-	sqlQueryString := "SELECT anime.russian, anime.amine_url, anime.poster_url FROM anime"
+	sqlQueryString := "SELECT anime.russian, anime.amine_url, anime.poster_url, count(anime.id) as anime_acount FROM anime"
 	countOfParameter := 0
 	if genreOk {
 		sqlQueryString += " JOIN anime_genre ON anime.id = anime_genre.anime_id" +
@@ -95,6 +95,9 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if studioOk {
 		sqlQueryString += " JOIN anime_studio ON anime.id = anime_studio.anime_id" +
 			" JOIN studio ON studio.id = anime_studio.studio_id"
+	}
+	if phraseOk {
+		sqlQueryString += " JOIN ngramm ON anime.id = ngramm.anime_id"
 	}
 	sqlQueryString += " WHERE 1=1"
 	if genreOk {
@@ -227,10 +230,23 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if phraseOk {
-		countOfParameter++
-		sqlQueryString += " AND (lower(anime.russian) ~ lower($" + strconv.Itoa(countOfParameter) + ")"
-		sqlQueryString += " OR lower(anime.name) ~ lower($" + strconv.Itoa(countOfParameter) + "))"
-		args = append(args, phrase[0])
+		ngramms := []string{}
+		for _, word := range strings.Split(phrase[0], " ") {
+			for i := 0; i < len(word)-2; i++ {
+				ngramms = append(ngramms, word[i:i+3])
+			}
+		}
+		mas := "("
+		for i, ngrm := range ngramms {
+			countOfParameter++
+			mas += "$" + strconv.Itoa(countOfParameter)
+			if i != len(ngramms)-1 {
+				mas += ","
+			}
+			args = append(args, ngrm)
+		}
+		mas += ")"
+		sqlQueryString += " AND lower(ngramm.ngramm_value) IN " + mas
 	}
 	if scoreOk {
 		//need to validate score
@@ -238,42 +254,52 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		sqlQueryString += " AND anime.score >= $" + strconv.Itoa(countOfParameter)
 		args = append(args, score[0])
 	}
+	sqlQueryString += " GROUP BY (anime.russian, anime.amine_url, anime.poster_url)"
+	if phraseOk {
+		sqlQueryString += " ORDER BY anime_acount DESC "
+		args = append(args)
+	}
 	if orderOK {
+		if !phraseOk {
+			sqlQueryString += " ORDER BY "
+		} else {
+			sqlQueryString += ", "
+		}
 		switch order[0] {
 		case "id":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
 				args = append(args, "anime.external_id")
 			}
 		case "kind":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
 				args = append(args, "anime.kind")
 			}
 		case "name":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
 				args = append(args, "anime.name")
 			}
 		case "aired_on":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
 				args = append(args, "anime.aired_on")
 			}
 		case "episodes":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
 				args = append(args, "anime.epizodes")
 			}
 		case "status":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
 				args = append(args, "anime.status")
 			}
 		}
@@ -306,7 +332,8 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		var russianName sql.NullString
 		var animeURL sql.NullString
 		var posterURL sql.NullString
-		result.Scan(&russianName, &animeURL, &posterURL)
+		var count sql.NullInt64
+		result.Scan(&russianName, &animeURL, &posterURL, &count)
 		animeRo.Name = russianName.String
 		animeRo.URL = "https://shikimori.org" + animeURL.String
 		animeRo.PosterURL = "https://shikimori.org" + posterURL.String
