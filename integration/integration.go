@@ -8,8 +8,11 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
+
+const n = 3 // current value for n-gramm
 
 var NDD = errors.New("Database does not contains rows with processed = false") //'No database data' error
 
@@ -326,41 +329,51 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]An
 		log.Println("Error parsing of animes: ", parseAnimesError)
 		panic(parseAnimesError)
 	}
-	for i := 0; i < len(*animes); i++ {
-		rows, txExecSelectErr := tx.Query("SELECT external_id FROM ANIME WHERE external_id = $1", (*animes)[i].ID)
+	//function for inserting anime
+	insertAnimeFunc := func(tx *sql.Tx, anime Anime) {
+		rows, txExecSelectErr := tx.Query("SELECT external_id FROM ANIME WHERE external_id = $1", anime.ID)
 		if txExecSelectErr != nil {
 			log.Println("Query cannot be executed: ", txExecSelectErr)
 			panic(txExecSelectErr)
 		}
+		defer rows.Close()
 		if !rows.Next() {
 			var airedOn *string
-			if (*animes)[i].AiredOn != nil {
-				airedOn = (*animes)[i].AiredOn.toDateValue()
+			if anime.AiredOn != nil {
+				airedOn = anime.AiredOn.toDateValue()
 			}
 			var releasedOn *string
-			if (*animes)[i].ReleasedOn != nil {
-				releasedOn = (*animes)[i].ReleasedOn.toDateValue()
+			if anime.ReleasedOn != nil {
+				releasedOn = anime.ReleasedOn.toDateValue()
 			}
-			var posterURL = *((*animes)[i].Image.Original)
-			if _, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed, lastmodifytime) "+
+			var posterURL = *(anime.Image.Original)
+			txResult, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed, lastmodifytime) "+
 				"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, now())",
-				(*animes)[i].ID,
-				(*animes)[i].Name,
-				(*animes)[i].Russian,
-				(*animes)[i].URL,
-				(*animes)[i].Kind,
-				(*animes)[i].Status,
-				(*animes)[i].Episodes,
-				(*animes)[i].EpisodesAired,
+				anime.ID,
+				anime.Name,
+				anime.Russian,
+				anime.URL,
+				anime.Kind,
+				anime.Status,
+				anime.Episodes,
+				anime.EpisodesAired,
 				airedOn,
 				releasedOn,
-				posterURL); txExecErr != nil {
+				posterURL)
+			if txExecErr != nil {
 				log.Println("Query cannot be executed: ", txExecErr)
-				rows.Close()
 				panic(txExecErr)
 			}
+			animeInternalID, getLastInsertIdErr := txResult.LastInsertId()
+			if getLastInsertIdErr != nil {
+				log.Println("Database error: ", getLastInsertIdErr)
+				panic(getLastInsertIdErr)
+			}
+			sj.IndexName(*anime.Name, animeInternalID, tx)
 		}
-		rows.Close()
+	}
+	for i := 0; i < len(*animes); i++ {
+		insertAnimeFunc(tx, (*animes)[i])
 	}
 	if txCommitErr := tx.Commit(); txCommitErr != nil {
 		log.Println("Transaction cannot be commited: ", txCommitErr)
@@ -368,6 +381,39 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]An
 	}
 	log.Println("Page with number " + strconv.FormatInt(page, 10) + " has been processed")
 	return animes
+}
+
+//IndexName func
+func (sj *ShikimoriJob) IndexName(name string, animeID int64, tx *sql.Tx) {
+	//now we need to index name using N-gramm method.
+	ngramms := []string{}
+	for _, word := range strings.Split(name, " ") {
+		for i := 0; i < len(word)-n+1; i++ {
+			ngramms = append(ngramms, word[i:i+n])
+		}
+	}
+	checkIfNgrammExists := func(ngramm string, animeID int64) bool {
+		rows, rowsErr := sj.Db.Query("SELECT FROM ngramm WHERE ngram_value = $1 AND anime_id = $2", ngramm, animeID)
+		if rowsErr != nil {
+			log.Fatalln("Database error: ", rowsErr)
+			panic(rowsErr)
+		}
+		defer rows.Close()
+		if !rows.Next() {
+			return false
+		} else {
+			return true
+		}
+	}
+	//next step: to insert to database new index ngramms, if they don't exists
+	for _, ngramm := range ngramms {
+		if !checkIfNgrammExists(ngramm, animeID) {
+			_, txErr := tx.Exec("INSERT INTO ngramm (ngramm_value, anime_id) VALUES ($1, $2)", ngramm, animeID)
+			if txErr != nil {
+				log.Println("Database error: ", txErr)
+			}
+		}
+	}
 }
 
 //Anime struct
