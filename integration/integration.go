@@ -370,6 +370,9 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]An
 				panic(getLastInsertIdErr)
 			}
 			sj.IndexName(*anime.Name, animeInternalID, tx)
+			if anime.Russian != nil {
+				sj.IndexName(*anime.Russian, animeInternalID, tx)
+			}
 		}
 	}
 	for i := 0; i < len(*animes); i++ {
@@ -388,8 +391,9 @@ func (sj *ShikimoriJob) IndexName(name string, animeID int64, tx *sql.Tx) {
 	//now we need to index name using N-gramm method.
 	ngramms := []string{}
 	for _, word := range strings.Split(name, " ") {
-		for i := 0; i < len(word)-n+1; i++ {
-			ngramms = append(ngramms, word[i:i+n])
+		wordAsRunes := ([]rune)(word)
+		for i := 0; i < len(wordAsRunes)-n+1; i++ {
+			ngramms = append(ngramms, string(wordAsRunes[i:i+n]))
 		}
 	}
 	checkIfNgrammExists := func(ngramm string, animeID int64) bool {
