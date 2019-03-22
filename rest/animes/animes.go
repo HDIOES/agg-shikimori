@@ -234,8 +234,9 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if phraseOk {
 		ngramms := []string{}
 		for _, word := range strings.Split(phrase[0], " ") {
-			for i := 0; i < len(word)-2; i++ {
-				ngramms = append(ngramms, word[i:i+3])
+			wordAsRunes := ([]rune)(word)
+			for i := 0; i < len(wordAsRunes)-2; i++ {
+				ngramms = append(ngramms, string(wordAsRunes[i:i+3]))
 			}
 		}
 		mas := "("
