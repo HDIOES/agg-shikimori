@@ -7,8 +7,10 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/gorilla/mux"
 )
@@ -86,7 +88,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	offset, offsetOk := vars["offset"]
 	animes := []AnimeRO{}
 	args := make([]interface{}, 0)
-	sqlQueryString := "SELECT anime.russian, anime.amine_url, anime.poster_url, count(anime.id) as anime_acount FROM anime"
+	sqlQueryString := "SELECT anime.russian, anime.name, anime.amine_url, anime.poster_url, count(anime.id) as anime_acount FROM anime"
 	countOfParameter := 0
 	if genreOk {
 		sqlQueryString += " JOIN anime_genre ON anime.id = anime_genre.anime_id" +
@@ -255,7 +257,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		sqlQueryString += " AND anime.score >= $" + strconv.Itoa(countOfParameter)
 		args = append(args, score[0])
 	}
-	sqlQueryString += " GROUP BY (anime.russian, anime.amine_url, anime.poster_url)"
+	sqlQueryString += " GROUP BY (anime.name, anime.russian, anime.amine_url, anime.poster_url)"
 	if phraseOk {
 		sqlQueryString += " ORDER BY anime_acount DESC "
 		args = append(args)
@@ -330,22 +332,86 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	defer result.Close()
 	for result.Next() {
 		animeRo := AnimeRO{}
+		var name sql.NullString
 		var russianName sql.NullString
 		var animeURL sql.NullString
 		var posterURL sql.NullString
 		var count sql.NullInt64
-		result.Scan(&russianName, &animeURL, &posterURL, &count)
-		animeRo.Name = russianName.String
+		result.Scan(&name, &russianName, &animeURL, &posterURL, &count)
+		animeRo.Name = name.String
+		animeRo.RussuanName = russianName.String
 		animeRo.URL = "https://shikimori.org" + animeURL.String
 		animeRo.PosterURL = "https://shikimori.org" + posterURL.String
+		if phraseOk {
+			isCyrrilic := false
+			for _, r := range ([]rune)(phrase[0]) {
+				if unicode.Is(unicode.Cyrillic, r) {
+					isCyrrilic = true
+					break
+				}
+			}
+			if isCyrrilic {
+				animeRo.Ld = LowensteinDistance(animeRo.RussuanName, phrase[0])
+			} else {
+				animeRo.Ld = LowensteinDistance(animeRo.Name, phrase[0])
+			}
+		}
 		animes = append(animes, animeRo)
+	}
+	if phraseOk {
+		sort.SliceStable(animes, func(i, j int) bool {
+			return animes[i].Ld < animes[j].Ld
+		})
 	}
 	json.NewEncoder(w).Encode(animes)
 }
 
+//LowensteinDistance copypasting from wikipedia
+func LowensteinDistance(s1, s2 string) int {
+	min := func(values ...int) int {
+		m := values[0]
+		for _, v := range values {
+			if v < m {
+				m = v
+			}
+		}
+		return m
+	}
+	r1, r2 := []rune(s1), []rune(s2)
+	n, m := len(r1), len(r2)
+	if n > m {
+		r1, r2 = r2, r1
+		n, m = m, n
+	}
+	currentRow := make([]int, n+1)
+	previousRow := make([]int, n+1)
+	for i := range currentRow {
+		currentRow[i] = i
+	}
+	for i := 1; i <= m; i++ {
+		for j := range currentRow {
+			previousRow[j] = currentRow[j]
+			if j == 0 {
+				currentRow[j] = i
+				continue
+			} else {
+				currentRow[j] = 0
+			}
+			add, del, change := previousRow[j]+1, currentRow[j-1]+1, previousRow[j-1]
+			if r1[j-1] != r2[i-1] {
+				change++
+			}
+			currentRow[j] = min(add, del, change)
+		}
+	}
+	return currentRow[n]
+}
+
 //AnimeRO is rest object
 type AnimeRO struct {
-	Name      string `json:"name"`
-	URL       string `json:"url"`
-	PosterURL string `json:"poster_url"`
+	Name        string `json:"name"`
+	RussuanName string `json:"russian_name"`
+	URL         string `json:"url"`
+	PosterURL   string `json:"poster_url"`
+	Ld          int
 }
