@@ -7,10 +7,8 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/gorilla/mux"
 )
@@ -88,8 +86,53 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	offset, offsetOk := vars["offset"]
 	animes := []AnimeRO{}
 	args := make([]interface{}, 0)
-	sqlQueryString := "SELECT anime.russian, anime.name, anime.amine_url, anime.poster_url, count(anime.id) as anime_acount FROM anime"
+
+	sqlQueryString := "SELECT animes.anime_internal_id," +
+		"animes.name," +
+		"animes.anime_external_id," +
+		"animes.russian," +
+		"animes.amine_url," +
+		"animes.kind," +
+		"animes.anime_status," +
+		"animes.epizodes," +
+		"animes.epizodes_aired," +
+		"animes.aired_on," +
+		"animes.released_on," +
+		"animes.poster_url," +
+		"animes.score," +
+		"animes.duration," +
+		"animes.rating," +
+		"animes.franchase " +
+		"FROM (SELECT " +
+		"anime.id AS anime_internal_id," +
+		"anime.name," +
+		"anime.external_id as anime_external_id," +
+		"anime.russian," +
+		"anime.amine_url," +
+		"anime.kind," +
+		"anime.anime_status," +
+		"anime.epizodes," +
+		"anime.epizodes_aired," +
+		"anime.aired_on," +
+		"anime.released_on," +
+		"anime.poster_url," +
+		"anime.score," +
+		"anime.duration," +
+		"anime.rating," +
+		"anime.franchase "
 	countOfParameter := 0
+	if genreOk {
+		sqlQueryString += ", genre.external_id as genre_external_id"
+	}
+	if studioOk {
+		sqlQueryString += ", studio.external_id as studio_external_id"
+	}
+	if phraseOk {
+		countOfParameter++
+		sqlQueryString += ", to_tsvector(anime.russian) as russian_tsvector, to_tsvector(anime.name) as english_tsvector, phraseto_tsquery($" + strconv.Itoa(countOfParameter) + ") as ts_query"
+		args = append(args, phrase[0])
+	}
+	sqlQueryString += " FROM anime"
 	if genreOk {
 		sqlQueryString += " JOIN anime_genre ON anime.id = anime_genre.anime_id" +
 			" JOIN genre ON genre.id = anime_genre.genre_id"
@@ -98,13 +141,14 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		sqlQueryString += " JOIN anime_studio ON anime.id = anime_studio.anime_id" +
 			" JOIN studio ON studio.id = anime_studio.studio_id"
 	}
-	if phraseOk {
-		sqlQueryString += " JOIN ngramm ON anime.id = ngramm.anime_id"
-	}
+	sqlQueryString += ") as animes"
 	sqlQueryString += " WHERE 1=1"
+	if phraseOk {
+		sqlQueryString += " AND (animes.russian_tsvector @@ animes.ts_query OR animes.english_tsvector @@ animes.ts_query)"
+	}
 	if genreOk {
 		countOfParameter++
-		sqlQueryString += " AND genre.external_id IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND genre_external_id IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(genre[0], ",")
 		args = append(args, params[0])
 		for ind, genreExternalID := range params {
@@ -124,7 +168,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if studioOk {
 		countOfParameter++
-		sqlQueryString += " AND studio.external_id IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND studio_external_id IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(studio[0], ",")
 		args = append(args, params[0])
 		for ind, studioExternalID := range params {
@@ -144,7 +188,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if statusOk {
 		countOfParameter++
-		sqlQueryString += " AND anime.anime_status = $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND animes.anime_status = $" + strconv.Itoa(countOfParameter)
 		args = append(args, status[0])
 	}
 	if kindOk {
@@ -152,7 +196,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		for _, s := range kinds {
 			if s == kind[0] {
 				countOfParameter++
-				sqlQueryString += " AND anime.kind = $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += " AND animes.kind = $" + strconv.Itoa(countOfParameter)
 				args = append(args, kind[0])
 				break
 			}
@@ -160,7 +204,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if idsOk {
 		countOfParameter++
-		sqlQueryString += " AND anime.external_id IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime_external_id IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(ids[0], ",")
 		args = append(args, params[0])
 		for ind, id := range params {
@@ -181,7 +225,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	//log.Panicln("query = " + sqlQueryString)
 	if excludeIdsOk {
 		countOfParameter++
-		sqlQueryString += " AND anime.external_id NOT IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime_external_id NOT IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(excludeIds[0], ",")
 		args = append(args, params[0])
 		for ind, excludeID := range params {
@@ -203,21 +247,21 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		switch duration[0] {
 		case "S":
 			{
-				sqlQueryString += " AND anime.duration < 10"
+				sqlQueryString += " AND animes.duration < 10"
 			}
 		case "D":
 			{
-				sqlQueryString += " AND anime.duration < 30"
+				sqlQueryString += " AND animes.duration < 30"
 			}
 		case "F":
 			{
-				sqlQueryString += " AND anime.duration >= 30"
+				sqlQueryString += " AND animes.duration >= 30"
 			}
 		}
 	}
 	if franchiseOk {
 		countOfParameter++
-		sqlQueryString += " AND anime.franchase = $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND animes.franchase = $" + strconv.Itoa(countOfParameter)
 		args = append(args, franchise[0])
 	}
 	if ratingOk {
@@ -225,85 +269,64 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		for _, r := range ratings {
 			if r == rating[0] {
 				countOfParameter++
-				sqlQueryString += " AND anime.rating = $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += " AND animes.rating = $" + strconv.Itoa(countOfParameter)
 				args = append(args, rating[0])
 				break
 			}
 		}
 	}
-	if phraseOk {
-		ngramms := []string{}
-		for _, word := range strings.Split(phrase[0], " ") {
-			wordAsRunes := ([]rune)(word)
-			for i := 0; i < len(wordAsRunes)-2; i++ {
-				ngramms = append(ngramms, string(wordAsRunes[i:i+3]))
-			}
-		}
-		mas := "("
-		for i, ngrm := range ngramms {
-			countOfParameter++
-			mas += "$" + strconv.Itoa(countOfParameter)
-			if i != len(ngramms)-1 {
-				mas += ","
-			}
-			args = append(args, ngrm)
-		}
-		mas += ")"
-		sqlQueryString += " AND lower(ngramm.ngramm_value) IN " + mas
-	}
 	if scoreOk {
 		//need to validate score
 		countOfParameter++
-		sqlQueryString += " AND anime.score >= $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND animes.score >= $" + strconv.Itoa(countOfParameter)
 		args = append(args, score[0])
 	}
-	sqlQueryString += " GROUP BY (anime.name, anime.russian, anime.amine_url, anime.poster_url)"
-	if phraseOk {
-		sqlQueryString += " ORDER BY anime_acount DESC "
-		args = append(args)
-	}
 	if orderOK {
-		if !phraseOk {
-			sqlQueryString += " ORDER BY "
-		} else {
-			sqlQueryString += ", "
-		}
+		sqlQueryString += " ORDER BY "
 		switch order[0] {
 		case "id":
 			{
 				countOfParameter++
 				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.external_id")
+				args = append(args, "anime_external_id")
 			}
 		case "kind":
 			{
 				countOfParameter++
 				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.kind")
+				args = append(args, "animes.kind")
 			}
 		case "name":
 			{
 				countOfParameter++
 				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.name")
+				args = append(args, "animes.name")
 			}
 		case "aired_on":
 			{
 				countOfParameter++
 				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.aired_on")
+				args = append(args, "animes.aired_on")
 			}
 		case "episodes":
 			{
 				countOfParameter++
 				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.epizodes")
+				args = append(args, "animes.epizodes")
 			}
 		case "status":
 			{
 				countOfParameter++
 				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.status")
+				args = append(args, "animes.status")
+			}
+		case "relevance":
+			{
+				if phraseOk {
+					countOfParameter++
+					sqlQueryString += "$" + strconv.Itoa(countOfParameter)
+					args = append(args, "get_rank(animes.russian_tsvector, animes.english_tsvector, animes.ts_query) DESC")
+				}
 			}
 		}
 	}
@@ -332,36 +355,42 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	defer result.Close()
 	for result.Next() {
 		animeRo := AnimeRO{}
+		var id sql.NullInt64
 		var name sql.NullString
+		var externalID sql.NullString
 		var russianName sql.NullString
 		var animeURL sql.NullString
+		var kind sql.NullString
+		var animeStatus sql.NullString
+		var epizodes sql.NullInt64
+		var epizodesAired sql.NullInt64
+		var airedOn sql.NullString
+		var releasedOn sql.NullString
 		var posterURL sql.NullString
-		var count sql.NullInt64
-		result.Scan(&name, &russianName, &animeURL, &posterURL, &count)
+		var score sql.NullFloat64
+		var duration sql.NullFloat64
+		var rating sql.NullString
+		var franchase sql.NullString
+		result.Scan(&id,
+			&name, &externalID,
+			&russianName,
+			&animeURL,
+			&kind,
+			&animeStatus,
+			&epizodes,
+			&epizodesAired,
+			&airedOn,
+			&releasedOn,
+			&posterURL,
+			&score,
+			&duration,
+			&rating,
+			&franchase)
 		animeRo.Name = name.String
 		animeRo.RussuanName = russianName.String
 		animeRo.URL = "https://shikimori.org" + animeURL.String
 		animeRo.PosterURL = "https://shikimori.org" + posterURL.String
-		if phraseOk {
-			isCyrrilic := false
-			for _, r := range ([]rune)(phrase[0]) {
-				if unicode.Is(unicode.Cyrillic, r) {
-					isCyrrilic = true
-					break
-				}
-			}
-			if isCyrrilic {
-				animeRo.Ld = LowensteinDistance(animeRo.RussuanName, phrase[0])
-			} else {
-				animeRo.Ld = LowensteinDistance(animeRo.Name, phrase[0])
-			}
-		}
 		animes = append(animes, animeRo)
-	}
-	if phraseOk {
-		sort.SliceStable(animes, func(i, j int) bool {
-			return animes[i].Ld < animes[j].Ld
-		})
 	}
 	json.NewEncoder(w).Encode(animes)
 }
