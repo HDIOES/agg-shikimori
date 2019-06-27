@@ -48,8 +48,8 @@ func (a *AnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var posterURL sql.NullString
 		animeRows.Scan(&russianName, &animeURL, &posterURL)
 		animeRo.Name = russianName.String
-		animeRo.URL = "https://shikimori.org" + animeURL.String
-		animeRo.PosterURL = "https://shikimori.org" + posterURL.String
+		animeRo.URL = "https://shikimori.one" + animeURL.String
+		animeRo.PosterURL = "https://shikimori.one" + posterURL.String
 	}
 	json.NewEncoder(w).Encode(animeRo)
 }
