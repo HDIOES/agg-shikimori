@@ -6,5 +6,6 @@ COPY . ./
 RUN dep ensure
 RUN go install github.com/HDIOES/cpa-backend
 RUN cp configuration.json $GOPATH/bin/
+RUN cp -r migrations/ $GOPATH/bin/
 WORKDIR $GOPATH/bin
 ENTRYPOINT ["./cpa-backend"]
