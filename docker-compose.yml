@@ -1,0 +1,25 @@
+version: '3.6'
+
+volumes:
+  database_data:
+    driver: local
+
+services:
+  forna_postgresdb:
+    image: postgres
+    environment:
+      POSTGRES_USER: forna_user
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: forna
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+  app:
+    build: .
+    ports:
+      - 10046:10046
+    depends_on:
+      - forna_postgresdb
+    links:
+      - forna_postgresdb

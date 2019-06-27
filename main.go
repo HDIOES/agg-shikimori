@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	migrate "github.com/rubenv/sql-migrate"
 
 	"strconv"
 
@@ -20,8 +21,8 @@ import (
 	"github.com/gorilla/handlers"
 
 	"github.com/HDIOES/cpa-backend/integration"
-	animes "github.com/HDIOES/cpa-backend/rest/animes"
-	genres "github.com/HDIOES/cpa-backend/rest/genres"
+	"github.com/HDIOES/cpa-backend/rest/animes"
+	"github.com/HDIOES/cpa-backend/rest/genres"
 	"github.com/HDIOES/cpa-backend/rest/studios"
 )
 
@@ -62,6 +63,16 @@ func main() {
 		panic(durationErr)
 	} else {
 		db.SetConnMaxLifetime(timeoutDuration)
+	}
+
+	migrations := &migrate.FileMigrationSource{
+		Dir: "migrations",
+	}
+
+	if n, err := migrate.Exec(db, "postgres", migrations, migrate.Up); err == nil {
+		log.Printf("Applied %d migrations!\n", n)
+	} else {
+		panic(err)
 	}
 
 	log.Println("Configuration has been loaded")
