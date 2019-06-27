@@ -388,8 +388,8 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			&franchase)
 		animeRo.Name = name.String
 		animeRo.RussuanName = russianName.String
-		animeRo.URL = "https://shikimori.org" + animeURL.String
-		animeRo.PosterURL = "https://shikimori.org" + posterURL.String
+		animeRo.URL = "https://shikimori.one" + animeURL.String
+		animeRo.PosterURL = "https://shikimori.one" + posterURL.String
 		animes = append(animes, animeRo)
 	}
 	json.NewEncoder(w).Encode(animes)
