@@ -1,7 +1,7 @@
 {
-    "databaseUrl": "postgres://forna_user:12345@192.168.0.1:5432/forna",
+    "databaseUrl": "postgres://forna_user:12345@forna_postgresdb:5432/forna",
     "maxOpenConnections": 20,
     "maxIdleConnections": 5,
     "connectionTimeout": 60,
-    "port": 10045
+    "port": 10046
 }

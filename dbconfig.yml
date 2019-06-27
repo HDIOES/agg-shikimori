@@ -1,8 +1,0 @@
-development:
-    dialect: postgres
-    datasource: postgres://forna_user:12345@localhost:5432/forna
-    dir: migrations
-test:
-    dialect: postgres
-    datasource: postgres://forna_user:12345@192.168.0.1:5432/forna
-    dir: migrations    
