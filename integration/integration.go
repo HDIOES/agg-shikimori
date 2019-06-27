@@ -79,7 +79,7 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) (err er
 	}(tx)
 
 	log.Println("Now we will process anime with external_id = " + eID)
-	resp, getAnimeByIdErr := client.Get("https://shikimori.org/api/animes/" + eID)
+	resp, getAnimeByIdErr := client.Get("https://shikimori.one/api/animes/" + eID)
 	if getAnimeByIdErr != nil {
 		log.Println("Error during getting anime by id: ", getAnimeByIdErr)
 		err = getAnimeByIdErr
@@ -195,7 +195,7 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) {
 		}
 	}(tx)
 	genres := &[]Genre{}
-	resp, getGenresErr := client.Get("https://shikimori.org/api/genres")
+	resp, getGenresErr := client.Get("https://shikimori.one/api/genres")
 	if getGenresErr != nil {
 		log.Println("Error during getting genres: ", getGenresErr)
 		panic(getGenresErr)
@@ -252,7 +252,7 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) {
 		}
 	}(tx)
 	studios := &[]Studio{}
-	resp, getStudioErr := client.Get("https://shikimori.org/api/studios")
+	resp, getStudioErr := client.Get("https://shikimori.one/api/studios")
 	if getStudioErr != nil {
 		log.Println("Error during getting studios: ", getStudioErr)
 		panic(getStudioErr)
@@ -310,7 +310,7 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]An
 			tx.Rollback()
 		}
 	}(tx)
-	resp, animesGetErr := client.Get("https://shikimori.org/api/animes?page=" + strconv.FormatInt(page, 10) + "&limit=50")
+	resp, animesGetErr := client.Get("https://shikimori.one/api/animes?page=" + strconv.FormatInt(page, 10) + "&limit=50")
 	if animesGetErr != nil {
 		log.Println("Error during getting animes: ", animesGetErr)
 		panic(animesGetErr)
