@@ -326,41 +326,45 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]An
 		log.Println("Error parsing of animes: ", parseAnimesError)
 		panic(parseAnimesError)
 	}
-	for i := 0; i < len(*animes); i++ {
-		rows, txExecSelectErr := tx.Query("SELECT external_id FROM ANIME WHERE external_id = $1", (*animes)[i].ID)
+	//function for inserting anime
+	insertAnimeFunc := func(tx *sql.Tx, anime Anime) {
+		rows, txExecSelectErr := tx.Query("SELECT external_id FROM ANIME WHERE external_id = $1", anime.ID)
 		if txExecSelectErr != nil {
 			log.Println("Query cannot be executed: ", txExecSelectErr)
 			panic(txExecSelectErr)
 		}
+		defer rows.Close()
 		if !rows.Next() {
 			var airedOn *string
-			if (*animes)[i].AiredOn != nil {
-				airedOn = (*animes)[i].AiredOn.toDateValue()
+			if anime.AiredOn != nil {
+				airedOn = anime.AiredOn.toDateValue()
 			}
 			var releasedOn *string
-			if (*animes)[i].ReleasedOn != nil {
-				releasedOn = (*animes)[i].ReleasedOn.toDateValue()
+			if anime.ReleasedOn != nil {
+				releasedOn = anime.ReleasedOn.toDateValue()
 			}
-			var posterURL = *((*animes)[i].Image.Original)
-			if _, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed, lastmodifytime) "+
+			var posterURL = *(anime.Image.Original)
+			_, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed, lastmodifytime) "+
 				"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, now())",
-				(*animes)[i].ID,
-				(*animes)[i].Name,
-				(*animes)[i].Russian,
-				(*animes)[i].URL,
-				(*animes)[i].Kind,
-				(*animes)[i].Status,
-				(*animes)[i].Episodes,
-				(*animes)[i].EpisodesAired,
+				anime.ID,
+				anime.Name,
+				anime.Russian,
+				anime.URL,
+				anime.Kind,
+				anime.Status,
+				anime.Episodes,
+				anime.EpisodesAired,
 				airedOn,
 				releasedOn,
-				posterURL); txExecErr != nil {
+				posterURL)
+			if txExecErr != nil {
 				log.Println("Query cannot be executed: ", txExecErr)
-				rows.Close()
 				panic(txExecErr)
 			}
 		}
-		rows.Close()
+	}
+	for i := 0; i < len(*animes); i++ {
+		insertAnimeFunc(tx, (*animes)[i])
 	}
 	if txCommitErr := tx.Commit(); txCommitErr != nil {
 		log.Println("Transaction cannot be commited: ", txCommitErr)

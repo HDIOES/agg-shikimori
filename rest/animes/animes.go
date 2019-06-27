@@ -86,8 +86,53 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	offset, offsetOk := vars["offset"]
 	animes := []AnimeRO{}
 	args := make([]interface{}, 0)
-	sqlQueryString := "SELECT anime.russian, anime.amine_url, anime.poster_url FROM anime"
+
+	sqlQueryString := "SELECT animes.anime_internal_id," +
+		"animes.name," +
+		"animes.anime_external_id," +
+		"animes.russian," +
+		"animes.amine_url," +
+		"animes.kind," +
+		"animes.anime_status," +
+		"animes.epizodes," +
+		"animes.epizodes_aired," +
+		"animes.aired_on," +
+		"animes.released_on," +
+		"animes.poster_url," +
+		"animes.score," +
+		"animes.duration," +
+		"animes.rating," +
+		"animes.franchase " +
+		"FROM (SELECT " +
+		"anime.id AS anime_internal_id," +
+		"anime.name," +
+		"anime.external_id as anime_external_id," +
+		"anime.russian," +
+		"anime.amine_url," +
+		"anime.kind," +
+		"anime.anime_status," +
+		"anime.epizodes," +
+		"anime.epizodes_aired," +
+		"anime.aired_on," +
+		"anime.released_on," +
+		"anime.poster_url," +
+		"anime.score," +
+		"anime.duration," +
+		"anime.rating," +
+		"anime.franchase "
 	countOfParameter := 0
+	if genreOk {
+		sqlQueryString += ", genre.external_id as genre_external_id"
+	}
+	if studioOk {
+		sqlQueryString += ", studio.external_id as studio_external_id"
+	}
+	if phraseOk {
+		countOfParameter++
+		sqlQueryString += ", to_tsvector(anime.russian) as russian_tsvector, to_tsvector(anime.name) as english_tsvector, phraseto_tsquery($" + strconv.Itoa(countOfParameter) + ") as ts_query"
+		args = append(args, phrase[0])
+	}
+	sqlQueryString += " FROM anime"
 	if genreOk {
 		sqlQueryString += " JOIN anime_genre ON anime.id = anime_genre.anime_id" +
 			" JOIN genre ON genre.id = anime_genre.genre_id"
@@ -96,10 +141,14 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		sqlQueryString += " JOIN anime_studio ON anime.id = anime_studio.anime_id" +
 			" JOIN studio ON studio.id = anime_studio.studio_id"
 	}
+	sqlQueryString += ") as animes"
 	sqlQueryString += " WHERE 1=1"
+	if phraseOk {
+		sqlQueryString += " AND (animes.russian_tsvector @@ animes.ts_query OR animes.english_tsvector @@ animes.ts_query)"
+	}
 	if genreOk {
 		countOfParameter++
-		sqlQueryString += " AND genre.external_id IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND genre_external_id IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(genre[0], ",")
 		args = append(args, params[0])
 		for ind, genreExternalID := range params {
@@ -119,7 +168,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if studioOk {
 		countOfParameter++
-		sqlQueryString += " AND studio.external_id IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND studio_external_id IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(studio[0], ",")
 		args = append(args, params[0])
 		for ind, studioExternalID := range params {
@@ -139,7 +188,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if statusOk {
 		countOfParameter++
-		sqlQueryString += " AND anime.anime_status = $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND animes.anime_status = $" + strconv.Itoa(countOfParameter)
 		args = append(args, status[0])
 	}
 	if kindOk {
@@ -147,7 +196,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		for _, s := range kinds {
 			if s == kind[0] {
 				countOfParameter++
-				sqlQueryString += " AND anime.kind = $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += " AND animes.kind = $" + strconv.Itoa(countOfParameter)
 				args = append(args, kind[0])
 				break
 			}
@@ -155,7 +204,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if idsOk {
 		countOfParameter++
-		sqlQueryString += " AND anime.external_id IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime_external_id IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(ids[0], ",")
 		args = append(args, params[0])
 		for ind, id := range params {
@@ -176,7 +225,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	//log.Panicln("query = " + sqlQueryString)
 	if excludeIdsOk {
 		countOfParameter++
-		sqlQueryString += " AND anime.external_id NOT IN ($" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND anime_external_id NOT IN ($" + strconv.Itoa(countOfParameter)
 		var params = strings.Split(excludeIds[0], ",")
 		args = append(args, params[0])
 		for ind, excludeID := range params {
@@ -198,21 +247,21 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		switch duration[0] {
 		case "S":
 			{
-				sqlQueryString += " AND anime.duration < 10"
+				sqlQueryString += " AND animes.duration < 10"
 			}
 		case "D":
 			{
-				sqlQueryString += " AND anime.duration < 30"
+				sqlQueryString += " AND animes.duration < 30"
 			}
 		case "F":
 			{
-				sqlQueryString += " AND anime.duration >= 30"
+				sqlQueryString += " AND animes.duration >= 30"
 			}
 		}
 	}
 	if franchiseOk {
 		countOfParameter++
-		sqlQueryString += " AND anime.franchase = $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND animes.franchase = $" + strconv.Itoa(countOfParameter)
 		args = append(args, franchise[0])
 	}
 	if ratingOk {
@@ -220,61 +269,64 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		for _, r := range ratings {
 			if r == rating[0] {
 				countOfParameter++
-				sqlQueryString += " AND anime.rating = $" + strconv.Itoa(countOfParameter)
+				sqlQueryString += " AND animes.rating = $" + strconv.Itoa(countOfParameter)
 				args = append(args, rating[0])
 				break
 			}
 		}
 	}
-	if phraseOk {
-		countOfParameter++
-		sqlQueryString += " AND (lower(anime.russian) ~ lower($" + strconv.Itoa(countOfParameter) + ")"
-		sqlQueryString += " OR lower(anime.name) ~ lower($" + strconv.Itoa(countOfParameter) + "))"
-		args = append(args, phrase[0])
-	}
 	if scoreOk {
 		//need to validate score
 		countOfParameter++
-		sqlQueryString += " AND anime.score >= $" + strconv.Itoa(countOfParameter)
+		sqlQueryString += " AND animes.score >= $" + strconv.Itoa(countOfParameter)
 		args = append(args, score[0])
 	}
 	if orderOK {
+		sqlQueryString += " ORDER BY "
 		switch order[0] {
 		case "id":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.external_id")
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
+				args = append(args, "anime_external_id")
 			}
 		case "kind":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.kind")
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
+				args = append(args, "animes.kind")
 			}
 		case "name":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.name")
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
+				args = append(args, "animes.name")
 			}
 		case "aired_on":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.aired_on")
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
+				args = append(args, "animes.aired_on")
 			}
 		case "episodes":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.epizodes")
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
+				args = append(args, "animes.epizodes")
 			}
 		case "status":
 			{
 				countOfParameter++
-				sqlQueryString += " ORDER BY $" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime.status")
+				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
+				args = append(args, "animes.status")
+			}
+		case "relevance":
+			{
+				if phraseOk {
+					countOfParameter++
+					sqlQueryString += "$" + strconv.Itoa(countOfParameter)
+					args = append(args, "get_rank(animes.russian_tsvector, animes.english_tsvector, animes.ts_query) DESC")
+				}
 			}
 		}
 	}
@@ -303,11 +355,39 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	defer result.Close()
 	for result.Next() {
 		animeRo := AnimeRO{}
+		var id sql.NullInt64
+		var name sql.NullString
+		var externalID sql.NullString
 		var russianName sql.NullString
 		var animeURL sql.NullString
+		var kind sql.NullString
+		var animeStatus sql.NullString
+		var epizodes sql.NullInt64
+		var epizodesAired sql.NullInt64
+		var airedOn sql.NullString
+		var releasedOn sql.NullString
 		var posterURL sql.NullString
-		result.Scan(&russianName, &animeURL, &posterURL)
-		animeRo.Name = russianName.String
+		var score sql.NullFloat64
+		var duration sql.NullFloat64
+		var rating sql.NullString
+		var franchase sql.NullString
+		result.Scan(&id,
+			&name, &externalID,
+			&russianName,
+			&animeURL,
+			&kind,
+			&animeStatus,
+			&epizodes,
+			&epizodesAired,
+			&airedOn,
+			&releasedOn,
+			&posterURL,
+			&score,
+			&duration,
+			&rating,
+			&franchase)
+		animeRo.Name = name.String
+		animeRo.RussuanName = russianName.String
 		animeRo.URL = "https://shikimori.org" + animeURL.String
 		animeRo.PosterURL = "https://shikimori.org" + posterURL.String
 		animes = append(animes, animeRo)
@@ -315,9 +395,52 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(animes)
 }
 
+//LowensteinDistance copypasting from wikipedia
+func LowensteinDistance(s1, s2 string) int {
+	min := func(values ...int) int {
+		m := values[0]
+		for _, v := range values {
+			if v < m {
+				m = v
+			}
+		}
+		return m
+	}
+	r1, r2 := []rune(s1), []rune(s2)
+	n, m := len(r1), len(r2)
+	if n > m {
+		r1, r2 = r2, r1
+		n, m = m, n
+	}
+	currentRow := make([]int, n+1)
+	previousRow := make([]int, n+1)
+	for i := range currentRow {
+		currentRow[i] = i
+	}
+	for i := 1; i <= m; i++ {
+		for j := range currentRow {
+			previousRow[j] = currentRow[j]
+			if j == 0 {
+				currentRow[j] = i
+				continue
+			} else {
+				currentRow[j] = 0
+			}
+			add, del, change := previousRow[j]+1, currentRow[j-1]+1, previousRow[j-1]
+			if r1[j-1] != r2[i-1] {
+				change++
+			}
+			currentRow[j] = min(add, del, change)
+		}
+	}
+	return currentRow[n]
+}
+
 //AnimeRO is rest object
 type AnimeRO struct {
-	Name      string `json:"name"`
-	URL       string `json:"url"`
-	PosterURL string `json:"poster_url"`
+	Name        string `json:"name"`
+	RussuanName string `json:"russian_name"`
+	URL         string `json:"url"`
+	PosterURL   string `json:"poster_url"`
+	Ld          int
 }
