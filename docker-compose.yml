@@ -1,7 +1,7 @@
 version: '3.6'
 
 volumes:
-  database_data:
+  forna_data:
     driver: local
 
 services:
@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: 12345
       POSTGRES_DB: forna
     volumes:
-      - database_data:/var/lib/postgresql/data
+      - forna_data:/var/lib/postgresql/data
     ports:
       - 5432:5432
   app:
