@@ -1,5 +1,5 @@
 {
-    "databaseUrl": "postgres://forna_user:12345@forna_postgresdb:5432/forna",
+    "databaseUrl": "postgres://forna_user:12345@forna_postgresdb:5432/forna?sslmode=disable",
     "maxOpenConnections": 20,
     "maxIdleConnections": 5,
     "connectionTimeout": 60,
