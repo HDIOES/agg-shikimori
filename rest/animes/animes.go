@@ -10,16 +10,18 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/HDIOES/cpa-backend/util"
 	"github.com/gorilla/mux"
 )
 
-func CreateAnimeHandler(db *sql.DB) http.Handler {
-	animeHandler := &AnimeHandler{Db: db}
+func CreateAnimeHandler(db *sql.DB, config util.Configuration) http.Handler {
+	animeHandler := &AnimeHandler{Db: db, Config: config}
 	return animeHandler
 }
 
 type AnimeHandler struct {
-	Db *sql.DB
+	Db     *sql.DB
+	Config util.Configuration
 }
 
 func (a *AnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -48,20 +50,21 @@ func (a *AnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var posterURL sql.NullString
 		animeRows.Scan(&russianName, &animeURL, &posterURL)
 		animeRo.Name = russianName.String
-		animeRo.URL = "https://shikimori.one" + animeURL.String
-		animeRo.PosterURL = "https://shikimori.one" + posterURL.String
+		animeRo.URL = a.Config.ShikimoriURL + animeURL.String
+		animeRo.PosterURL = a.Config.ShikimoriURL + posterURL.String
 	}
 	json.NewEncoder(w).Encode(animeRo)
 }
 
-func CreateSearchAnimeHandler(db *sql.DB, router *mux.Router) http.Handler {
-	searchAnimeHandler := &SearchAnimeHandler{Db: db, Router: router}
+func CreateSearchAnimeHandler(db *sql.DB, router *mux.Router, config util.Configuration) http.Handler {
+	searchAnimeHandler := &SearchAnimeHandler{Db: db, Router: router, Config: config}
 	return searchAnimeHandler
 }
 
 type SearchAnimeHandler struct {
 	Db     *sql.DB
 	Router *mux.Router
+	Config util.Configuration
 }
 
 func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -388,8 +391,8 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			&franchase)
 		animeRo.Name = name.String
 		animeRo.RussuanName = russianName.String
-		animeRo.URL = "https://shikimori.one" + animeURL.String
-		animeRo.PosterURL = "https://shikimori.one" + posterURL.String
+		animeRo.URL = as.Config.ShikimoriURL + animeURL.String
+		animeRo.PosterURL = as.Config.ShikimoriURL + posterURL.String
 		animes = append(animes, animeRo)
 	}
 	json.NewEncoder(w).Encode(animes)

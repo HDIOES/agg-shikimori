@@ -23,26 +23,19 @@ import (
 	"github.com/HDIOES/cpa-backend/rest/animes"
 	"github.com/HDIOES/cpa-backend/rest/genres"
 	"github.com/HDIOES/cpa-backend/rest/studios"
+	"github.com/HDIOES/cpa-backend/util"
 )
-
-type Configuration struct {
-	DatabaseUrl        string `json:"databaseUrl"`
-	MaxOpenConnections int    `json:"maxOpenConnections"`
-	MaxIdleConnections int    `json:"maxIdleConnections"`
-	ConnectionTimeout  int    `json:"connectionTimeout"`
-	Port               int    `json:"port"`
-}
 
 func main() {
 	log.Println("Application has been runned")
 	log.Println("Loading configuration...")
 
-	configuration := Configuration{}
+	configuration := util.Configuration{}
 	gonfigErr := gonfig.GetConf("configuration.json", &configuration)
 	if gonfigErr != nil {
 		panic(gonfigErr)
 	}
-	db, err := sql.Open("postgres", configuration.DatabaseUrl)
+	db, err := sql.Open("postgres", configuration.DatabaseURL)
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +64,7 @@ func main() {
 	defer db.Close()
 	log.Println("Job running...")
 	cronRunner := cron.New()
-	shikimoriJob := &integration.ShikimoriJob{Db: db}
+	shikimoriJob := &integration.ShikimoriJob{Db: db, Config: configuration}
 	cronRunner.AddJob("@daily", shikimoriJob)
 	cronRunner.Start()
 
@@ -83,14 +76,14 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.Handle("/animes/random", animes.CreateAnimeHandler(db)).
+	router.Handle("/animes/random", animes.CreateAnimeHandler(db, configuration)).
 		Methods("GET")
 
-	router.Handle("/animes/search", animes.CreateSearchAnimeHandler(db, router)).
+	router.Handle("/animes/search", animes.CreateSearchAnimeHandler(db, router, configuration)).
 		Methods("GET")
 
 	router.HandleFunc("/animes/job", func(w http.ResponseWriter, r *http.Request) {
-		go shikimoriJob.Run()
+		//go shikimoriJob.Run()
 	}).Methods("GET")
 
 	router.Handle("/genres/search", genres.CreateGenreHandler(db)).
