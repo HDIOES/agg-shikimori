@@ -3,5 +3,9 @@
     "maxOpenConnections": 20,
     "maxIdleConnections": 5,
     "connectionTimeout": 60,
-    "port": 10046
+    "port": 10046,
+    "shikimori_url": "https://shikimori.one",
+    "shikimori_anime_search_url": "/api/animes/",
+    "shikimori_genre_url": "/api/genres/",
+    "shikimori_studio_url": "/api/studios/"
 }
