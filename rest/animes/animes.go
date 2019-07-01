@@ -72,285 +72,85 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if parseErr != nil {
 		log.Println(parseErr)
 	}
-	status, statusOk := vars["status"]
-	kind, kindOk := vars["kind"]
-	phrase, phraseOk := vars["phrase"]
-	order, orderOK := vars["order"]
-	score, scoreOk := vars["score"]
-	genre, genreOk := vars["genre"]
-	studio, studioOk := vars["studio"]
-	duration, durationOk := vars["duration"]
-	rating, ratingOk := vars["rating"]
-	franchise, franchiseOk := vars["franchise"]
-	ids, idsOk := vars["ids"]
-	excludeIds, excludeIdsOk := vars["exclude_ids"]
+	animeSQLBuilder := AnimeQueryBuilder{}
+	if status, statusOk := vars["status"]; statusOk {
+		animeSQLBuilder.SetStatus(status[0])
+	}
+	if kind, kindOk := vars["kind"]; kindOk {
+		animeSQLBuilder.SetKind(kind[0])
+	}
+	if phrase, phraseOk := vars["phrase"]; phraseOk {
+		animeSQLBuilder.SetPhrase(phrase[0])
+	}
+	if order, orderOK := vars["order"]; orderOK {
+		animeSQLBuilder.SetOrder(order[0])
+	}
+	if score, scoreOk := vars["score"]; scoreOk {
+		if scoreInt32, parseErr := strconv.ParseInt(score[0], 10, 32); parseErr != nil {
+			//TODO error processing
+		} else {
+			animeSQLBuilder.SetScore(int32(scoreInt32))
+		}
+	}
+	if genre, genreOk := vars["genre"]; genreOk {
+		if scoreInt32, parseErr := strconv.ParseInt(genre[0], 10, 32); parseErr != nil {
+			//TODO error processing
+		} else {
+			animeSQLBuilder.SetScore(int32(scoreInt32))
+		}
+	}
+	if studio, studioOk := vars["studio"]; studioOk {
+		if studioInt32, parseErr := strconv.ParseInt(studio[0], 10, 64); parseErr != nil {
+			//TODO error processing
+		} else {
+			animeSQLBuilder.AddStudioID(studioInt32)
+		}
+	}
+	if duration, durationOk := vars["duration"]; durationOk {
+		animeSQLBuilder.SetDuration(duration[0])
+	}
+	if rating, ratingOk := vars["rating"]; ratingOk {
+		animeSQLBuilder.SetRating(rating[0])
+	}
+	if franchise, franchiseOk := vars["franchise"]; franchiseOk {
+		animeSQLBuilder.SetFranchise(franchise[0])
+	}
+	if ids, idsOk := vars["ids"]; idsOk {
+		for _, id := range strings.Split(ids[0], " ") {
+			if idInt64, parseErr := strconv.ParseInt(id, 10, 64); parseErr != nil {
+				//TODO error processing
+			} else {
+				animeSQLBuilder.AddId(idInt64)
+			}
+		}
+	}
+	if excludeIds, excludeIdsOk := vars["exclude_ids"]; excludeIdsOk {
+		for _, id := range strings.Split(excludeIds[0], " ") {
+			if excludeIDInt64, parseErr := strconv.ParseInt(id, 10, 64); parseErr != nil {
+				//TODO error processing
+			} else {
+				animeSQLBuilder.AddExcludeId(excludeIDInt64)
+			}
+		}
+	}
 
-	limit, limitOk := vars["limit"]
-	offset, offsetOk := vars["offset"]
+	if limit, limitOk := vars["limit"]; limitOk {
+		if limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32); parseErr != nil {
+			//TODO error processing
+		} else {
+			animeSQLBuilder.SetLimit(int32(limitInt64))
+		}
+	}
+	if offset, offsetOk := vars["offset"]; offsetOk {
+		if offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32); parseErr != nil {
+			//TODO error processing
+		} else {
+			animeSQLBuilder.SetLimit(int32(offsetInt64))
+		}
+	}
 	animes := []AnimeRO{}
-	args := make([]interface{}, 0)
-
-	sqlQueryString := "SELECT animes.anime_internal_id," +
-		"animes.name," +
-		"animes.anime_external_id," +
-		"animes.russian," +
-		"animes.amine_url," +
-		"animes.kind," +
-		"animes.anime_status," +
-		"animes.epizodes," +
-		"animes.epizodes_aired," +
-		"animes.aired_on," +
-		"animes.released_on," +
-		"animes.poster_url," +
-		"animes.score," +
-		"animes.duration," +
-		"animes.rating," +
-		"animes.franchase " +
-		"FROM (SELECT " +
-		"anime.id AS anime_internal_id," +
-		"anime.name," +
-		"anime.external_id as anime_external_id," +
-		"anime.russian," +
-		"anime.amine_url," +
-		"anime.kind," +
-		"anime.anime_status," +
-		"anime.epizodes," +
-		"anime.epizodes_aired," +
-		"anime.aired_on," +
-		"anime.released_on," +
-		"anime.poster_url," +
-		"anime.score," +
-		"anime.duration," +
-		"anime.rating," +
-		"anime.franchase "
-	countOfParameter := 0
-	if genreOk {
-		sqlQueryString += ", genre.external_id as genre_external_id"
-	}
-	if studioOk {
-		sqlQueryString += ", studio.external_id as studio_external_id"
-	}
-	if phraseOk {
-		countOfParameter++
-		sqlQueryString += ", to_tsvector(anime.russian) as russian_tsvector, to_tsvector(anime.name) as english_tsvector, phraseto_tsquery($" + strconv.Itoa(countOfParameter) + ") as ts_query"
-		args = append(args, phrase[0])
-	}
-	sqlQueryString += " FROM anime"
-	if genreOk {
-		sqlQueryString += " JOIN anime_genre ON anime.id = anime_genre.anime_id" +
-			" JOIN genre ON genre.id = anime_genre.genre_id"
-	}
-	if studioOk {
-		sqlQueryString += " JOIN anime_studio ON anime.id = anime_studio.anime_id" +
-			" JOIN studio ON studio.id = anime_studio.studio_id"
-	}
-	sqlQueryString += ") as animes"
-	sqlQueryString += " WHERE 1=1"
-	if phraseOk {
-		sqlQueryString += " AND (animes.russian_tsvector @@ animes.ts_query OR animes.english_tsvector @@ animes.ts_query)"
-	}
-	if genreOk {
-		countOfParameter++
-		sqlQueryString += " AND genre_external_id IN ($" + strconv.Itoa(countOfParameter)
-		var params = strings.Split(genre[0], ",")
-		args = append(args, params[0])
-		for ind, genreExternalID := range params {
-			if ind == 0 {
-				continue
-			} else if ind == len(params)-1 {
-				countOfParameter++
-				sqlQueryString += ", $" + strconv.Itoa(countOfParameter)
-				args = append(args, genreExternalID)
-			} else {
-				countOfParameter++
-				sqlQueryString += ", $" + strconv.Itoa(countOfParameter) + ", "
-				args = append(args, genreExternalID)
-			}
-		}
-		sqlQueryString += ")"
-	}
-	if studioOk {
-		countOfParameter++
-		sqlQueryString += " AND studio_external_id IN ($" + strconv.Itoa(countOfParameter)
-		var params = strings.Split(studio[0], ",")
-		args = append(args, params[0])
-		for ind, studioExternalID := range params {
-			if ind == 0 {
-				continue
-			} else if ind == len(params)-1 {
-				countOfParameter++
-				sqlQueryString += ", $" + strconv.Itoa(countOfParameter)
-				args = append(args, studioExternalID)
-			} else {
-				countOfParameter++
-				sqlQueryString += ", $" + strconv.Itoa(countOfParameter) + ", "
-				args = append(args, studioExternalID)
-			}
-		}
-		sqlQueryString += ")"
-	}
-	if statusOk {
-		countOfParameter++
-		sqlQueryString += " AND animes.anime_status = $" + strconv.Itoa(countOfParameter)
-		args = append(args, status[0])
-	}
-	if kindOk {
-		var kinds = [...]string{"tv", "movie", "ova", "ona", "special", "music", "tv_13", "tv_24", "tv_48"}
-		for _, s := range kinds {
-			if s == kind[0] {
-				countOfParameter++
-				sqlQueryString += " AND animes.kind = $" + strconv.Itoa(countOfParameter)
-				args = append(args, kind[0])
-				break
-			}
-		}
-	}
-	if idsOk {
-		countOfParameter++
-		sqlQueryString += " AND anime_external_id IN ($" + strconv.Itoa(countOfParameter)
-		var params = strings.Split(ids[0], ",")
-		args = append(args, params[0])
-		for ind, id := range params {
-			if ind == 0 {
-				continue
-			} else if ind == len(params)-1 {
-				countOfParameter++
-				sqlQueryString += ", $" + strconv.Itoa(countOfParameter)
-				args = append(args, id)
-			} else {
-				countOfParameter++
-				sqlQueryString += ", $" + strconv.Itoa(countOfParameter) + ", "
-				args = append(args, id)
-			}
-		}
-		sqlQueryString += ")"
-	}
-	//log.Panicln("query = " + sqlQueryString)
-	if excludeIdsOk {
-		countOfParameter++
-		sqlQueryString += " AND anime_external_id NOT IN ($" + strconv.Itoa(countOfParameter)
-		var params = strings.Split(excludeIds[0], ",")
-		args = append(args, params[0])
-		for ind, excludeID := range params {
-			if ind == 0 {
-				continue
-			} else if ind == len(params)-1 {
-				countOfParameter++
-				sqlQueryString += ", $" + strconv.Itoa(countOfParameter)
-				args = append(args, excludeID)
-			} else {
-				countOfParameter++
-				sqlQueryString += ", $" + strconv.Itoa(countOfParameter) + ", "
-				args = append(args, excludeID)
-			}
-		}
-		sqlQueryString += ")"
-	}
-	if durationOk {
-		switch duration[0] {
-		case "S":
-			{
-				sqlQueryString += " AND animes.duration < 10"
-			}
-		case "D":
-			{
-				sqlQueryString += " AND animes.duration < 30"
-			}
-		case "F":
-			{
-				sqlQueryString += " AND animes.duration >= 30"
-			}
-		}
-	}
-	if franchiseOk {
-		countOfParameter++
-		sqlQueryString += " AND animes.franchase = $" + strconv.Itoa(countOfParameter)
-		args = append(args, franchise[0])
-	}
-	if ratingOk {
-		var ratings = [...]string{"none", "g", "pg", "pg_13", "r", "r_plus", "rx"}
-		for _, r := range ratings {
-			if r == rating[0] {
-				countOfParameter++
-				sqlQueryString += " AND animes.rating = $" + strconv.Itoa(countOfParameter)
-				args = append(args, rating[0])
-				break
-			}
-		}
-	}
-	if scoreOk {
-		//need to validate score
-		countOfParameter++
-		sqlQueryString += " AND animes.score >= $" + strconv.Itoa(countOfParameter)
-		args = append(args, score[0])
-	}
-	if orderOK {
-		sqlQueryString += " ORDER BY "
-		switch order[0] {
-		case "id":
-			{
-				countOfParameter++
-				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "anime_external_id")
-			}
-		case "kind":
-			{
-				countOfParameter++
-				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "animes.kind")
-			}
-		case "name":
-			{
-				countOfParameter++
-				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "animes.name")
-			}
-		case "aired_on":
-			{
-				countOfParameter++
-				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "animes.aired_on")
-			}
-		case "episodes":
-			{
-				countOfParameter++
-				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "animes.epizodes")
-			}
-		case "status":
-			{
-				countOfParameter++
-				sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-				args = append(args, "animes.status")
-			}
-		case "relevance":
-			{
-				if phraseOk {
-					countOfParameter++
-					sqlQueryString += "$" + strconv.Itoa(countOfParameter)
-					args = append(args, "get_rank(animes.russian_tsvector, animes.english_tsvector, animes.ts_query) DESC")
-				}
-			}
-		}
-	}
-	if limitOk {
-		countOfParameter++
-		sqlQueryString += " LIMIT $" + strconv.Itoa(countOfParameter)
-		value, err := strconv.ParseInt(limit[0], 10, 0)
-		if err != nil {
-			log.Println(err)
-		}
-		args = append(args, value)
-	} else {
-		sqlQueryString += " LIMIT 50"
-	}
-	if offsetOk {
-		countOfParameter++
-		sqlQueryString += " OFFSET $" + strconv.Itoa(countOfParameter)
-		args = append(args, offset[0])
-	}
-	log.Println(sqlQueryString)
-	result, queryErr := as.Db.Query(sqlQueryString, args...)
+	sqlQuery, args := animeSQLBuilder.Build()
+	result, queryErr := as.Db.Query(sqlQuery, args...)
 	if queryErr != nil {
 		log.Println(queryErr)
 		panic(queryErr)
@@ -398,45 +198,332 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(animes)
 }
 
-//LowensteinDistance copypasting from wikipedia
-func LowensteinDistance(s1, s2 string) int {
-	min := func(values ...int) int {
-		m := values[0]
-		for _, v := range values {
-			if v < m {
-				m = v
+//AnimeQueryBuilder struct
+type AnimeQueryBuilder struct {
+	Limit      int32
+	Offset     int32
+	Status     string
+	Kind       string
+	Phrase     string
+	Order      string
+	Score      int32
+	GenreIds   []int64
+	StudioIds  []int64
+	Duration   string
+	Rating     string
+	Franchise  string
+	Ids        []int64
+	ExcludeIds []int64
+	SQLQuery   strings.Builder
+}
+
+func (aqb *AnimeQueryBuilder) AddExcludeId(excludeId int64) {
+	aqb.ExcludeIds = append(aqb.ExcludeIds, excludeId)
+}
+
+func (aqb *AnimeQueryBuilder) AddId(id int64) {
+	aqb.Ids = append(aqb.Ids, id)
+}
+
+func (aqb *AnimeQueryBuilder) SetFranchise(franchise string) {
+	aqb.Franchise = franchise
+}
+
+func (aqb *AnimeQueryBuilder) SetRating(rating string) {
+	aqb.Rating = rating
+}
+
+func (aqb *AnimeQueryBuilder) SetDuration(duration string) {
+	aqb.Duration = duration
+}
+
+func (aqb *AnimeQueryBuilder) AddStudioID(studioID int64) {
+	aqb.StudioIds = append(aqb.StudioIds, studioID)
+}
+
+func (aqb *AnimeQueryBuilder) AddGenreId(genreID int64) {
+	aqb.GenreIds = append(aqb.GenreIds)
+}
+
+func (aqb *AnimeQueryBuilder) SetScore(score int32) {
+	aqb.Score = score
+}
+
+func (aqb *AnimeQueryBuilder) SetOrder(order string) {
+	aqb.Order = order
+}
+
+func (aqb *AnimeQueryBuilder) SetPhrase(phrase string) {
+	aqb.Phrase = phrase
+}
+
+func (aqb *AnimeQueryBuilder) SetKind(kind string) {
+	aqb.Kind = kind
+}
+
+func (aqb *AnimeQueryBuilder) SetStatus(status string) {
+	aqb.Status = status
+}
+
+//SetLimit func
+func (aqb *AnimeQueryBuilder) SetLimit(limit int32) {
+	aqb.Limit = limit
+}
+
+//SetOffset func
+func (aqb *AnimeQueryBuilder) SetOffset(offset int32) {
+	aqb.Offset = offset
+}
+
+//Build func
+func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
+	aqb.SQLQuery.WriteString("SELECT ")
+	aqb.SQLQuery.WriteString("animes.anime_internal_id,")
+	aqb.SQLQuery.WriteString("animes.name,")
+	aqb.SQLQuery.WriteString("animes.anime_external_id,")
+	aqb.SQLQuery.WriteString("animes.russian,")
+	aqb.SQLQuery.WriteString("animes.amine_url,")
+	aqb.SQLQuery.WriteString("animes.kind,")
+	aqb.SQLQuery.WriteString("animes.anime_status,")
+	aqb.SQLQuery.WriteString("animes.epizodes,")
+	aqb.SQLQuery.WriteString("animes.epizodes_aired,")
+	aqb.SQLQuery.WriteString("animes.aired_on,")
+	aqb.SQLQuery.WriteString("animes.released_on,")
+	aqb.SQLQuery.WriteString("animes.poster_url,")
+	aqb.SQLQuery.WriteString("animes.score,")
+	aqb.SQLQuery.WriteString("animes.duration,")
+	aqb.SQLQuery.WriteString("animes.rating,")
+	aqb.SQLQuery.WriteString("animes.franchase ")
+	aqb.SQLQuery.WriteString("FROM ")
+	aqb.SQLQuery.WriteString("(")
+	aqb.SQLQuery.WriteString("SELECT ")
+	aqb.SQLQuery.WriteString("anime.id AS anime_internal_id,")
+	aqb.SQLQuery.WriteString("anime.name,")
+	aqb.SQLQuery.WriteString("anime.external_id as anime_external_id,")
+	aqb.SQLQuery.WriteString("anime.russian,")
+	aqb.SQLQuery.WriteString("anime.amine_url,")
+	aqb.SQLQuery.WriteString("anime.kind,")
+	aqb.SQLQuery.WriteString("anime.anime_status,")
+	aqb.SQLQuery.WriteString("anime.epizodes,")
+	aqb.SQLQuery.WriteString("anime.epizodes_aired,")
+	aqb.SQLQuery.WriteString("anime.aired_on,")
+	aqb.SQLQuery.WriteString("anime.released_on,")
+	aqb.SQLQuery.WriteString("anime.poster_url,")
+	aqb.SQLQuery.WriteString("anime.score,")
+	aqb.SQLQuery.WriteString("anime.duration,")
+	aqb.SQLQuery.WriteString("anime.rating,")
+	aqb.SQLQuery.WriteString("anime.franchase ")
+	countOfParameter := 0
+	args := make([]interface{}, 0)
+	if len(aqb.GenreIds) > 0 {
+		aqb.SQLQuery.WriteString(", genre.external_id as genre_external_id")
+	}
+	if len(aqb.StudioIds) > 0 {
+		aqb.SQLQuery.WriteString(", studio.external_id as studio_external_id")
+	}
+	if len(aqb.Phrase) > 0 {
+		countOfParameter++
+		aqb.SQLQuery.WriteString(", to_tsvector(anime.russian) as russian_tsvector, to_tsvector(anime.name) as english_tsvector, phraseto_tsquery($")
+		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+		aqb.SQLQuery.WriteString(") as ts_query")
+		args = append(args, aqb.Phrase)
+	}
+	aqb.SQLQuery.WriteString(" FROM anime")
+	if len(aqb.GenreIds) > 0 {
+		aqb.SQLQuery.WriteString(" JOIN anime_genre ON anime.id = anime_genre.anime_id")
+		aqb.SQLQuery.WriteString(" JOIN genre ON genre.id = anime_genre.genre_id")
+	}
+	if len(aqb.StudioIds) > 0 {
+		aqb.SQLQuery.WriteString(" JOIN anime_studio ON anime.id = anime_studio.anime_id")
+		aqb.SQLQuery.WriteString(" JOIN studio ON studio.id = anime_studio.studio_id")
+	}
+	aqb.SQLQuery.WriteString(") as animes")
+	aqb.SQLQuery.WriteString(" WHERE 1=1")
+	if len(aqb.Phrase) > 0 {
+		aqb.SQLQuery.WriteString(" AND (animes.russian_tsvector @@ animes.ts_query OR animes.english_tsvector @@ animes.ts_query)")
+	}
+	if len(aqb.GenreIds) > 0 {
+		aqb.SQLQuery.WriteString(" AND genre_external_id IN (")
+		for ind, genreExternalID := range aqb.GenreIds {
+			countOfParameter++
+			args = append(args, genreExternalID)
+			aqb.SQLQuery.WriteString("$")
+			aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+			if ind < len(aqb.GenreIds)-1 {
+				aqb.SQLQuery.WriteString(",")
 			}
 		}
-		return m
+		aqb.SQLQuery.WriteString(")")
 	}
-	r1, r2 := []rune(s1), []rune(s2)
-	n, m := len(r1), len(r2)
-	if n > m {
-		r1, r2 = r2, r1
-		n, m = m, n
-	}
-	currentRow := make([]int, n+1)
-	previousRow := make([]int, n+1)
-	for i := range currentRow {
-		currentRow[i] = i
-	}
-	for i := 1; i <= m; i++ {
-		for j := range currentRow {
-			previousRow[j] = currentRow[j]
-			if j == 0 {
-				currentRow[j] = i
-				continue
-			} else {
-				currentRow[j] = 0
+	if len(aqb.StudioIds) > 0 {
+		aqb.SQLQuery.WriteString(" AND studio_external_id IN (")
+		for ind, studioExternalID := range aqb.StudioIds {
+			countOfParameter++
+			args = append(args, studioExternalID)
+			aqb.SQLQuery.WriteString("$")
+			aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+			if ind < len(aqb.StudioIds)-1 {
+				aqb.SQLQuery.WriteString(",")
 			}
-			add, del, change := previousRow[j]+1, currentRow[j-1]+1, previousRow[j-1]
-			if r1[j-1] != r2[i-1] {
-				change++
+		}
+		aqb.SQLQuery.WriteString(")")
+	}
+	if len(aqb.Status) > 0 {
+		countOfParameter++
+		aqb.SQLQuery.WriteString(" AND animes.anime_status = $")
+		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+		args = append(args, aqb.Status)
+	}
+	if len(aqb.Kind) > 0 {
+		var kinds = [...]string{"tv", "movie", "ova", "ona", "special", "music", "tv_13", "tv_24", "tv_48"}
+		for _, s := range kinds {
+			if strings.Compare(s, aqb.Kind) == 0 {
+				countOfParameter++
+				aqb.SQLQuery.WriteString(" AND animes.kind = $")
+				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+				args = append(args, aqb.Kind)
+				break
 			}
-			currentRow[j] = min(add, del, change)
 		}
 	}
-	return currentRow[n]
+	if len(aqb.Ids) > 0 {
+		aqb.SQLQuery.WriteString(" AND anime_external_id IN (")
+		for ind, id := range aqb.Ids {
+			countOfParameter++
+			args = append(args, id)
+			aqb.SQLQuery.WriteString("$")
+			aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+			if ind < len(aqb.Ids)-1 {
+				aqb.SQLQuery.WriteString(",")
+			}
+		}
+		aqb.SQLQuery.WriteString(")")
+	}
+	if len(aqb.ExcludeIds) > 0 {
+		aqb.SQLQuery.WriteString(" AND anime_external_id NOT IN (")
+		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+		for ind, excludeID := range aqb.ExcludeIds {
+			countOfParameter++
+			args = append(args, excludeID)
+			aqb.SQLQuery.WriteString("$")
+			aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+			if ind < len(aqb.ExcludeIds)-1 {
+				aqb.SQLQuery.WriteString(",")
+			}
+		}
+		aqb.SQLQuery.WriteString(")")
+	}
+	if len(aqb.Duration) > 0 {
+		switch aqb.Duration {
+		case "S":
+			{
+				aqb.SQLQuery.WriteString(" AND animes.duration < 10")
+			}
+		case "D":
+			{
+				aqb.SQLQuery.WriteString(" AND animes.duration < 30")
+			}
+		case "F":
+			{
+				aqb.SQLQuery.WriteString(" AND animes.duration >= 30")
+			}
+		}
+	}
+	if len(aqb.Franchise) > 0 {
+		countOfParameter++
+		aqb.SQLQuery.WriteString(" AND animes.franchase = $")
+		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+		args = append(args, aqb.Franchise)
+	}
+	if len(aqb.Rating) > 0 {
+		var ratings = [...]string{"none", "g", "pg", "pg_13", "r", "r_plus", "rx"}
+		for _, r := range ratings {
+			if strings.Compare(r, aqb.Rating) == 0 {
+				countOfParameter++
+				aqb.SQLQuery.WriteString(" AND animes.rating = $")
+				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+				args = append(args, aqb.Rating)
+				break
+			}
+		}
+	}
+	if aqb.Score > 0.0 {
+		//need to validate score
+		countOfParameter++
+		aqb.SQLQuery.WriteString(" AND animes.score >= $")
+		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+		args = append(args, aqb.Score)
+	}
+	if len(aqb.Order) > 0 {
+		aqb.SQLQuery.WriteString(" ORDER BY ")
+		switch aqb.Order {
+		case "id":
+			{
+				countOfParameter++
+				aqb.SQLQuery.WriteString("$")
+				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+				args = append(args, "anime_external_id")
+			}
+		case "kind":
+			{
+				countOfParameter++
+				aqb.SQLQuery.WriteString("$")
+				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+				args = append(args, "animes.kind")
+			}
+		case "name":
+			{
+				countOfParameter++
+				aqb.SQLQuery.WriteString("$")
+				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+				args = append(args, "animes.name")
+			}
+		case "aired_on":
+			{
+				countOfParameter++
+				aqb.SQLQuery.WriteString("$")
+				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+				args = append(args, "animes.aired_on")
+			}
+		case "episodes":
+			{
+				countOfParameter++
+				aqb.SQLQuery.WriteString("$")
+				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+				args = append(args, "animes.epizodes")
+			}
+		case "status":
+			{
+				countOfParameter++
+				aqb.SQLQuery.WriteString("$")
+				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+				args = append(args, "animes.status")
+			}
+		case "relevance":
+			{
+				if len(aqb.Phrase) > 0 {
+					countOfParameter++
+					aqb.SQLQuery.WriteString("$")
+					aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+					args = append(args, "get_rank(animes.russian_tsvector, animes.english_tsvector, animes.ts_query) DESC")
+				}
+			}
+		}
+	}
+	if aqb.Limit > 0 {
+		countOfParameter++
+		aqb.SQLQuery.WriteString(" LIMIT $" + strconv.Itoa(countOfParameter))
+		args = append(args, aqb.Limit)
+	} else {
+		aqb.SQLQuery.WriteString(" LIMIT 50")
+	}
+	if aqb.Offset > 0 {
+		countOfParameter++
+		aqb.SQLQuery.WriteString(" OFFSET $")
+		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+		args = append(args, aqb.Offset)
+	}
+	return aqb.SQLQuery.String(), args
 }
 
 //AnimeRO is rest object
