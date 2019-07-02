@@ -88,6 +88,7 @@ func (gqb *GenreQueryBuilder) Build() (string, []interface{}) {
 		query.WriteString(" OFFSET $")
 		query.WriteString(strconv.Itoa(countOfParameter))
 	}
+	return query.String(), args
 }
 
 //SetLimit func
