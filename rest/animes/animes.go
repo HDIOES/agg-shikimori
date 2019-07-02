@@ -86,24 +86,24 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		animeSQLBuilder.SetOrder(order[0])
 	}
 	if score, scoreOk := vars["score"]; scoreOk {
-		if scoreInt32, parseErr := strconv.ParseInt(score[0], 10, 32); parseErr != nil {
+		if scoreInt64, parseErr := strconv.ParseInt(score[0], 10, 32); parseErr != nil {
 			//TODO error processing
 		} else {
-			animeSQLBuilder.SetScore(int32(scoreInt32))
+			animeSQLBuilder.SetScore(int32(scoreInt64))
 		}
 	}
 	if genre, genreOk := vars["genre"]; genreOk {
-		if scoreInt32, parseErr := strconv.ParseInt(genre[0], 10, 32); parseErr != nil {
+		if scoreInt64, parseErr := strconv.ParseInt(genre[0], 10, 32); parseErr != nil {
 			//TODO error processing
 		} else {
-			animeSQLBuilder.SetScore(int32(scoreInt32))
+			animeSQLBuilder.SetScore(int32(scoreInt64))
 		}
 	}
 	if studio, studioOk := vars["studio"]; studioOk {
-		if studioInt32, parseErr := strconv.ParseInt(studio[0], 10, 64); parseErr != nil {
+		if studioInt64, parseErr := strconv.ParseInt(studio[0], 10, 64); parseErr != nil {
 			//TODO error processing
 		} else {
-			animeSQLBuilder.AddStudioID(studioInt32)
+			animeSQLBuilder.AddStudioID(studioInt64)
 		}
 	}
 	if duration, durationOk := vars["duration"]; durationOk {
