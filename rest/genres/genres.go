@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 func CreateGenreHandler(db *sql.DB) http.Handler {
@@ -23,24 +24,23 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if parseErr != nil {
 		log.Println(parseErr)
 	}
-	limit, limitOk := vars["limit"]
-	offset, offsetOk := vars["offset"]
-	sqlQueryString := "SELECT external_id, genre_name, russian, kind FROM genre WHERE 1=1"
-	countOfParameter := 0
-	args := make([]interface{}, 0)
-	if offsetOk {
-		args = append(args, offset[0])
-		countOfParameter++
-		sqlQueryString += " OFFSET $" + strconv.Itoa(countOfParameter)
+	genreSQLBuilder := GenreQueryBuilder{}
+	if limit, limitOk := vars["limit"]; limitOk {
+		if limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32); parseErr != nil {
+			//TODO error processing
+		} else {
+			genreSQLBuilder.SetOffset(int32(limitInt64))
+		}
 	}
-	if limitOk {
-		countOfParameter++
-		args = append(args, limit[0])
-		sqlQueryString += " LIMIT $" + strconv.Itoa(countOfParameter)
-	} else {
-		sqlQueryString += " LIMIT 50"
+	if offset, offsetOk := vars["offset"]; offsetOk {
+		if offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32); parseErr != nil {
+			//TODO error processing
+		} else {
+			genreSQLBuilder.SetOffset(int32(offsetInt64))
+		}
 	}
-	rows, rowsErr := g.Db.Query(sqlQueryString, args...)
+	sqlQuery, args := genreSQLBuilder.Build()
+	rows, rowsErr := g.Db.Query(sqlQuery, args...)
 	if rowsErr != nil {
 		log.Println(rowsErr)
 	}
@@ -60,6 +60,45 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		genres = append(genres, genreRo)
 	}
 	json.NewEncoder(w).Encode(genres)
+}
+
+//GenreQueryBuilder struct
+type GenreQueryBuilder struct {
+	Limit  int32
+	Offset int32
+}
+
+//Build func
+func (gqb *GenreQueryBuilder) Build() (string, []interface{}) {
+	query := strings.Builder{}
+	args := make([]interface{}, 0)
+	query.WriteString("SELECT external_id, genre_name, russian, kind FROM genre WHERE 1=1")
+	countOfParameter := 0
+	if gqb.Limit > 0 {
+		countOfParameter++
+		args = append(args, gqb.Limit)
+		query.WriteString(" LIMIT $")
+		query.WriteString(strconv.Itoa(countOfParameter))
+	} else {
+		query.WriteString(" LIMIT 50")
+	}
+	if gqb.Offset > 0 {
+		countOfParameter++
+		args = append(args, gqb.Offset)
+		query.WriteString(" OFFSET $")
+		query.WriteString(strconv.Itoa(countOfParameter))
+	}
+	return query.String(), args
+}
+
+//SetLimit func
+func (gqb *GenreQueryBuilder) SetLimit(limit int32) {
+	gqb.Limit = limit
+}
+
+//SetOffset func
+func (gqb *GenreQueryBuilder) SetOffset(offset int32) {
+	gqb.Offset = offset
 }
 
 type GenreRo struct {
