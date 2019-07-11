@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -13,48 +12,6 @@ import (
 	"github.com/HDIOES/cpa-backend/util"
 	"github.com/gorilla/mux"
 )
-
-func CreateAnimeHandler(db *sql.DB, config util.Configuration) http.Handler {
-	animeHandler := &AnimeHandler{Db: db, Config: config}
-	return animeHandler
-}
-
-type AnimeHandler struct {
-	Db     *sql.DB
-	Config util.Configuration
-}
-
-func (a *AnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rows, queryErr := a.Db.Query("SELECT COUNT(*) FROM anime")
-	if queryErr != nil {
-		log.Println(queryErr)
-	}
-	defer rows.Close()
-	var count sql.NullInt64
-	if rows.Next() {
-		err := rows.Scan(&count)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-	randowRowNumber := rand.Int63n(count.Int64) + 1
-	animeRows, animeRowsErr := a.Db.Query("select russian, amine_url, poster_url from (select row_number() over(), russian, amine_url, poster_url from anime) as query where query.row_number = $1", randowRowNumber)
-	if animeRowsErr != nil {
-		log.Println(animeRowsErr)
-	}
-	defer animeRows.Close()
-	animeRo := &AnimeRO{}
-	if animeRows.Next() {
-		var russianName sql.NullString
-		var animeURL sql.NullString
-		var posterURL sql.NullString
-		animeRows.Scan(&russianName, &animeURL, &posterURL)
-		animeRo.Name = russianName.String
-		animeRo.URL = a.Config.ShikimoriURL + animeURL.String
-		animeRo.PosterURL = a.Config.ShikimoriURL + posterURL.String
-	}
-	json.NewEncoder(w).Encode(animeRo)
-}
 
 func CreateSearchAnimeHandler(db *sql.DB, router *mux.Router, config util.Configuration) http.Handler {
 	searchAnimeHandler := &SearchAnimeHandler{Db: db, Router: router, Config: config}
@@ -215,6 +172,8 @@ type AnimeQueryBuilder struct {
 	Ids        []int64
 	ExcludeIds []int64
 	SQLQuery   strings.Builder
+	CountOnly  bool
+	RowNumber  int64
 }
 
 func (aqb *AnimeQueryBuilder) AddExcludeId(excludeId int64) {
@@ -275,9 +234,43 @@ func (aqb *AnimeQueryBuilder) SetOffset(offset int32) {
 	aqb.Offset = offset
 }
 
+func (aqb *AnimeQueryBuilder) SetCountOnly(countOnly bool) {
+	aqb.CountOnly = countOnly
+}
+
+func (aqb *AnimeQueryBuilder) SetRowNumber(rowNumber int64) {
+	aqb.RowNumber = rowNumber
+}
+
 //Build func
 func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
+	if aqb.RowNumber > 0 && !aqb.CountOnly {
+		aqb.SQLQuery.WriteString("SELECT ")
+		aqb.SQLQuery.WriteString("query.anime_internal_id,")
+		aqb.SQLQuery.WriteString("query.name,")
+		aqb.SQLQuery.WriteString("query.anime_external_id,")
+		aqb.SQLQuery.WriteString("query.russian,")
+		aqb.SQLQuery.WriteString("query.amine_url,")
+		aqb.SQLQuery.WriteString("query.kind,")
+		aqb.SQLQuery.WriteString("query.anime_status,")
+		aqb.SQLQuery.WriteString("query.epizodes,")
+		aqb.SQLQuery.WriteString("query.epizodes_aired,")
+		aqb.SQLQuery.WriteString("query.aired_on,")
+		aqb.SQLQuery.WriteString("query.released_on,")
+		aqb.SQLQuery.WriteString("query.poster_url,")
+		aqb.SQLQuery.WriteString("query.score,")
+		aqb.SQLQuery.WriteString("query.duration,")
+		aqb.SQLQuery.WriteString("query.rating,")
+		aqb.SQLQuery.WriteString("query.franchase ")
+		aqb.SQLQuery.WriteString("FROM (")
+	}
+	//animeRows, animeRowsErr := a.Db.Query("select animes.anime_internal_id, amine_url, poster_url from (select row_number() over(),
+	//russian, amine_url, poster_url from anime) as query where query.row_number = $1", randowRowNumber)
+	if aqb.RowNumber == 0 && aqb.CountOnly {
+		aqb.SQLQuery.WriteString("SELECT COUNT(*) FROM (")
+	}
 	aqb.SQLQuery.WriteString("SELECT ")
+	aqb.SQLQuery.WriteString("row_number() over(),")
 	aqb.SQLQuery.WriteString("animes.anime_internal_id,")
 	aqb.SQLQuery.WriteString("animes.name,")
 	aqb.SQLQuery.WriteString("animes.anime_external_id,")
@@ -510,18 +503,27 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 			}
 		}
 	}
-	if aqb.Limit > 0 {
+	if aqb.CountOnly && aqb.RowNumber == 0 {
+		aqb.SQLQuery.WriteString(") as query")
+	} else if !aqb.CountOnly && aqb.RowNumber > 0 {
 		countOfParameter++
-		aqb.SQLQuery.WriteString(" LIMIT $" + strconv.Itoa(countOfParameter))
-		args = append(args, aqb.Limit)
-	} else {
-		aqb.SQLQuery.WriteString(" LIMIT 50")
-	}
-	if aqb.Offset > 0 {
-		countOfParameter++
-		aqb.SQLQuery.WriteString(" OFFSET $")
+		aqb.SQLQuery.WriteString(") as query where query.row_number = $")
 		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-		args = append(args, aqb.Offset)
+		args = append(args, aqb.RowNumber)
+	} else {
+		if aqb.Limit > 0 {
+			countOfParameter++
+			aqb.SQLQuery.WriteString(" LIMIT $" + strconv.Itoa(countOfParameter))
+			args = append(args, aqb.Limit)
+		} else {
+			aqb.SQLQuery.WriteString(" LIMIT 50")
+		}
+		if aqb.Offset > 0 {
+			countOfParameter++
+			aqb.SQLQuery.WriteString(" OFFSET $")
+			aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+			args = append(args, aqb.Offset)
+		}
 	}
 	return aqb.SQLQuery.String(), args
 }
