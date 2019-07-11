@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -94,7 +95,7 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	animeSQLBuilder.SetRowNumber(0)
 	countOfAnimes := rah.getCount(animeSQLBuilder)
 	animeSQLBuilder.SetCountOnly(false)
-	animeSQLBuilder.SetRowNumber(countOfAnimes + 1)
+	animeSQLBuilder.SetRowNumber(rand.Int63n(countOfAnimes + 1))
 	animeRO := rah.getRandomAnime(animeSQLBuilder)
 	json.NewEncoder(w).Encode(animeRO)
 }
