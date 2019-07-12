@@ -115,6 +115,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	defer result.Close()
 	for result.Next() {
 		animeRo := AnimeRO{}
+		var rowNumber sql.NullInt64
 		var id sql.NullInt64
 		var name sql.NullString
 		var externalID sql.NullString
@@ -131,8 +132,11 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		var duration sql.NullFloat64
 		var rating sql.NullString
 		var franchase sql.NullString
-		result.Scan(&id,
-			&name, &externalID,
+		result.Scan(
+			&rowNumber,
+			&id,
+			&name,
+			&externalID,
 			&russianName,
 			&animeURL,
 			&kind,
@@ -264,8 +268,6 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 		aqb.SQLQuery.WriteString("query.franchase ")
 		aqb.SQLQuery.WriteString("FROM (")
 	}
-	//animeRows, animeRowsErr := a.Db.Query("select animes.anime_internal_id, amine_url, poster_url from (select row_number() over(),
-	//russian, amine_url, poster_url from anime) as query where query.row_number = $1", randowRowNumber)
 	if aqb.RowNumber == 0 && aqb.CountOnly {
 		aqb.SQLQuery.WriteString("SELECT COUNT(*) FROM (")
 	}
