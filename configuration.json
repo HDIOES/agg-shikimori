@@ -1,11 +1,11 @@
 {
-    "databaseUrl": "postgres://forna_user:12345@forna_postgresdb:5432/forna?sslmode=disable",
+    "databaseUrl": "postgres://forna_user:12345@localhost:5432/forna?sslmode=disable",
     "maxOpenConnections": 20,
     "maxIdleConnections": 5,
     "connectionTimeout": 60,
     "port": 10046,
     "shikimori_url": "https://shikimori.one",
-    "shikimori_anime_search_url": "/api/animes/",
-    "shikimori_genre_url": "/api/genres/",
-    "shikimori_studio_url": "/api/studios/"
+    "shikimori_anime_search_url": "/api/animes",
+    "shikimori_genre_url": "/api/genres",
+    "shikimori_studio_url": "/api/studios"
 }
