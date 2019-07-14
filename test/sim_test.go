@@ -43,26 +43,41 @@ func preTest() (*sql.DB, *util.Configuration) {
 	return db, &configuration
 }
 
-func clearDb(db *sql.DB) {
+func clearDb(db *sql.DB) (dbErr error) {
 	tx, txErr := db.Begin()
 	if txErr != nil {
-		log.Println("Transaction start failed: ", txErr)
-		return
+		log.Println("Transaction start failed")
+		return txErr
 	}
 	defer func(tx *sql.Tx) {
-		if r := recover(); r != nil {
-			tx.Rollback()
+		if dbErr != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("Transaction cannot rollbaked")
+			}
 		}
 	}(tx)
-	tx.Exec("DELETE FROM ANIME_STUDIO")
-	tx.Exec("DELETE FROM STUDIO")
-	tx.Exec("DELETE FROM ANIME_GENRE")
-	tx.Exec("DELETE FROM GENRE")
-	tx.Exec("DELETE FROM ANIME")
-	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		log.Println("Transaction cannot be commited: ", txCommitErr)
-		panic(txCommitErr)
+	if _, err := tx.Exec("DELETE FROM ANIME_STUDIO"); err != nil {
+		dbErr = err
+		return dbErr
 	}
+	if _, err := tx.Exec("DELETE FROM STUDIO"); err != nil {
+		dbErr = err
+		return dbErr
+	}
+	if _, err := tx.Exec("DELETE FROM ANIME_GENRE"); err != nil {
+		dbErr = err
+		return dbErr
+	}
+	if _, err := tx.Exec("DELETE FROM ANIME"); err != nil {
+		dbErr = err
+		return dbErr
+	}
+	if txCommitErr := tx.Commit(); txCommitErr != nil {
+		log.Println("Transaction cannot be commited")
+		dbErr = txCommitErr
+		return dbErr
+	}
+	return nil
 }
 
 func postTest(db *sql.DB) {
@@ -73,6 +88,7 @@ func postTest(db *sql.DB) {
 func TestSimple(t *testing.T) {
 	defer gock.Off()
 	db, config := preTest()
+	defer postTest(db)
 	shikimoriJob := &integration.ShikimoriJob{Db: db, Config: *config}
 
 	animesData, err := ioutil.ReadFile("mock/shikimori_animes_success.json")
@@ -115,5 +131,4 @@ func TestSimple(t *testing.T) {
 		JSON(oneAnimeData)
 
 	shikimoriJob.Run()
-	postTest(db)
 }
