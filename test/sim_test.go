@@ -38,7 +38,31 @@ func preTest() (*sql.DB, *util.Configuration) {
 	} else {
 		db.SetConnMaxLifetime(timeoutDuration)
 	}
+	//clear db
+	clearDb(db)
 	return db, &configuration
+}
+
+func clearDb(db *sql.DB) {
+	tx, txErr := db.Begin()
+	if txErr != nil {
+		log.Println("Transaction start failed: ", txErr)
+		return
+	}
+	defer func(tx *sql.Tx) {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}(tx)
+	tx.Exec("DELETE FROM ANIME_STUDIO")
+	tx.Exec("DELETE FROM STUDIO")
+	tx.Exec("DELETE FROM ANIME_GENRE")
+	tx.Exec("DELETE FROM GENRE")
+	tx.Exec("DELETE FROM ANIME")
+	if txCommitErr := tx.Commit(); txCommitErr != nil {
+		log.Println("Transaction cannot be commited: ", txCommitErr)
+		panic(txCommitErr)
+	}
 }
 
 func postTest(db *sql.DB) {
