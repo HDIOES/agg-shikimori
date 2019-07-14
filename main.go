@@ -83,7 +83,7 @@ func main() {
 		Methods("GET")
 
 	router.HandleFunc("/animes/job", func(w http.ResponseWriter, r *http.Request) {
-		//go shikimoriJob.Run()
+		go shikimoriJob.Run()
 	}).Methods("GET")
 
 	router.Handle("/genres/search", genres.CreateGenreHandler(db)).
