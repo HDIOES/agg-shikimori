@@ -314,7 +314,7 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]An
 		}
 	}(tx)
 
-	resp, animesGetErr := client.Get(sj.Config.ShikimoriAnimeSearchURL + sj.Config.ShikimoriAnimeSearchURL + "?page=" + strconv.FormatInt(page, 10) + "&limit=50")
+	resp, animesGetErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriAnimeSearchURL + "?page=" + strconv.FormatInt(page, 10) + "&limit=50")
 	if animesGetErr != nil {
 		log.Println("Error during getting animes: ", animesGetErr)
 		panic(animesGetErr)
