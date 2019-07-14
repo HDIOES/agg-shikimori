@@ -2,6 +2,7 @@ package test
 
 import (
 	"database/sql"
+	"io/ioutil"
 	"log"
 	"strconv"
 	"testing"
@@ -15,8 +16,7 @@ import (
 	gock "gopkg.in/h2non/gock.v1"
 )
 
-//TestSimple function
-func TestSimple(t *testing.T) {
+func preTest() (*sql.DB, *util.Configuration) {
 	//create config
 	configuration := util.Configuration{}
 	gonfigErr := gonfig.GetConf("../configuration.json", &configuration)
@@ -38,15 +38,58 @@ func TestSimple(t *testing.T) {
 	} else {
 		db.SetConnMaxLifetime(timeoutDuration)
 	}
-	defer db.Close()
+	return db, &configuration
+}
 
-	shikimoriJob := &integration.ShikimoriJob{Db: db, Config: configuration}
-	gock.New(configuration.ShikimoriURL).
-		Get(configuration.ShikimoriAnimeSearchURL).
+func postTest(db *sql.DB) {
+	db.Close()
+}
+
+//TestSimple function
+func TestSimple(t *testing.T) {
+	defer gock.Off()
+	db, config := preTest()
+	shikimoriJob := &integration.ShikimoriJob{Db: db, Config: *config}
+
+	animesData, err := ioutil.ReadFile("mock/shikimori_animes_success.json")
+	if err != nil {
+		//test error
+	}
+	gock.New(config.ShikimoriURL).
+		Get(config.ShikimoriAnimeSearchURL).
 		MatchParam("page", "1").
 		MatchParam("limit", "50").
-		Reply(500)
+		Reply(200).
+		JSON(animesData)
+
+	genresData, err := ioutil.ReadFile("mock/shikimori_genres_success.json")
+	if err != nil {
+		//test error
+	}
+	gock.New(config.ShikimoriURL).
+		Get(config.ShikimoriGenreURL).
+		Reply(200).
+		JSON(genresData)
+
+	studiosData, err := ioutil.ReadFile("mock/shikimori_studios_success.json")
+	if err != nil {
+		//test error
+	}
+	gock.New(config.ShikimoriURL).
+		Get(config.ShikimoriStudioURL).
+		Reply(200).
+		JSON(studiosData)
+
+	oneAnimeData, err := ioutil.ReadFile("mock/one_anime_shikimori_success.json")
+	if err != nil {
+		//test error
+	}
+	gock.New(config.ShikimoriURL).
+		Get(config.ShikimoriAnimeSearchURL+"/").
+		PathParam("animes", "5114").
+		Reply(200).
+		JSON(oneAnimeData)
 
 	shikimoriJob.Run()
-
+	postTest(db)
 }
