@@ -37,7 +37,9 @@ func preTest(t *testing.T) (*sql.DB, *util.Configuration) {
 		db.SetConnMaxLifetime(timeoutDuration)
 	}
 	//clear db
-	clearDb(db, t)
+	if err := clearDb(db, t); err != nil {
+		t.Fatal(err)
+	}
 	return db, &configuration
 }
 
