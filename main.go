@@ -76,7 +76,7 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.Handle("/api.animes/random", animes.CreateRandomAnimeHandler(db, configuration)).
+	router.Handle("/api/animes/random", animes.CreateRandomAnimeHandler(db, configuration)).
 		Methods("GET")
 
 	router.Handle("/api/animes/search", animes.CreateSearchAnimeHandler(db, router, configuration)).
