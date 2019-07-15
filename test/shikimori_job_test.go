@@ -3,6 +3,8 @@ package test
 import (
 	"database/sql"
 	"io/ioutil"
+	"log"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -15,30 +17,35 @@ import (
 	gock "gopkg.in/h2non/gock.v1"
 )
 
-func preTest(t *testing.T) (*sql.DB, *util.Configuration) {
+var db *sql.DB
+var configuration *util.Configuration
+
+func TestMain(m *testing.M) {
+	db, configuration = prepareDbAndConfiguration(m)
+	code := m.Run()
+	os.Exit(code)
+}
+
+func prepareDbAndConfiguration(m *testing.M) (*sql.DB, *util.Configuration) {
 	//create config
 	configuration := util.Configuration{}
 	gonfigErr := gonfig.GetConf("../configuration.json", &configuration)
 	if gonfigErr != nil {
-		t.Fatal(gonfigErr)
+		log.Fatal(gonfigErr)
 	}
 	//create db
 	db, err := sql.Open("postgres", configuration.DatabaseURL)
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
 	db.SetMaxIdleConns(configuration.MaxIdleConnections)
 	db.SetMaxOpenConns(configuration.MaxOpenConnections)
 	timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
 	timeoutDuration, durationErr := time.ParseDuration(timeout)
 	if durationErr != nil {
-		t.Fatal(durationErr)
+		log.Fatal(durationErr)
 	} else {
 		db.SetConnMaxLifetime(timeoutDuration)
-	}
-	//clear db
-	if err := clearDb(db, t); err != nil {
-		t.Fatal(err)
 	}
 	return db, &configuration
 }
@@ -86,19 +93,22 @@ func postTest(db *sql.DB, t *testing.T) {
 	}
 }
 
+func TestShikimoriJobSuccess1(t *testing.T) {
+}
+
 //TestSimple function
 func TestShikimoriJobSuccess(t *testing.T) {
+	clearDb(db, t)
 	defer gock.Off()
-	db, config := preTest(t)
 	defer postTest(db, t)
-	shikimoriJob := &integration.ShikimoriJob{Db: db, Config: *config}
+	shikimoriJob := &integration.ShikimoriJob{Db: db, Config: configuration}
 
 	animesData, err := ioutil.ReadFile("mock/shikimori_animes_success.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	gock.New(config.ShikimoriURL).
-		Get(config.ShikimoriAnimeSearchURL).
+	gock.New(configuration.ShikimoriURL).
+		Get(configuration.ShikimoriAnimeSearchURL).
 		MatchParam("page", "1").
 		MatchParam("limit", "50").
 		Reply(200).
@@ -108,8 +118,8 @@ func TestShikimoriJobSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gock.New(config.ShikimoriURL).
-		Get(config.ShikimoriGenreURL).
+	gock.New(configuration.ShikimoriURL).
+		Get(configuration.ShikimoriGenreURL).
 		Reply(200).
 		JSON(genresData)
 
@@ -117,8 +127,8 @@ func TestShikimoriJobSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gock.New(config.ShikimoriURL).
-		Get(config.ShikimoriStudioURL).
+	gock.New(configuration.ShikimoriURL).
+		Get(configuration.ShikimoriStudioURL).
 		Reply(200).
 		JSON(studiosData)
 
@@ -126,8 +136,8 @@ func TestShikimoriJobSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gock.New(config.ShikimoriURL).
-		Get(config.ShikimoriAnimeSearchURL+"/").
+	gock.New(configuration.ShikimoriURL).
+		Get(configuration.ShikimoriAnimeSearchURL+"/").
 		PathParam("animes", "5114").
 		Reply(200).
 		JSON(oneAnimeData)

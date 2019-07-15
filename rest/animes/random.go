@@ -14,15 +14,15 @@ import (
 )
 
 //CreateRandomAnimeHandler function receive handler for rest-method /animes/random
-func CreateRandomAnimeHandler(db *sql.DB, config util.Configuration) http.Handler {
-	randomAnimeHandler := &RandomAnimeHandler{Db: db, Config: config}
+func CreateRandomAnimeHandler(db *sql.DB, config *util.Configuration) http.Handler {
+	animeDao := AnimeDao{Db: db, Config: config}
+	randomAnimeHandler := &RandomAnimeHandler{Dao: &animeDao}
 	return randomAnimeHandler
 }
 
 //RandomAnimeHandler struct
 type RandomAnimeHandler struct {
-	Db     *sql.DB
-	Config util.Configuration
+	Dao *AnimeDao
 }
 
 func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -93,76 +93,11 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	animeSQLBuilder.SetCountOnly(true)
 	animeSQLBuilder.SetRowNumber(0)
-	countOfAnimes := rah.getCount(animeSQLBuilder)
-	animeSQLBuilder.SetCountOnly(false)
-	animeSQLBuilder.SetRowNumber(rand.Int63n(countOfAnimes + 1))
-	animeRO := rah.getRandomAnime(animeSQLBuilder)
-	json.NewEncoder(w).Encode(animeRO)
-}
-
-func (rah *RandomAnimeHandler) getCount(sqlBuilder AnimeQueryBuilder) int64 {
-	sqlQuery, args := sqlBuilder.Build()
-	result, queryErr := rah.Db.Query(sqlQuery, args...)
-	if queryErr != nil {
-		log.Println(queryErr)
-		panic(queryErr)
+	if err, countOfAnimes := rah.Dao.GetCount(animeSQLBuilder); err != nil {
+		animeSQLBuilder.SetCountOnly(false)
+		animeSQLBuilder.SetRowNumber(rand.Int63n(countOfAnimes + 1))
 	}
-	defer result.Close()
-	if result.Next() {
-		var count sql.NullInt64
-		result.Scan(&count)
-		return count.Int64
-	}
-	return 0
-}
-
-func (rah *RandomAnimeHandler) getRandomAnime(sqlBuilder AnimeQueryBuilder) *AnimeRO {
-	sqlQuery, args := sqlBuilder.Build()
-	result, queryErr := rah.Db.Query(sqlQuery, args...)
-	if queryErr != nil {
-		log.Println(queryErr)
-		panic(queryErr)
-	}
-	defer result.Close()
-	if result.Next() {
-		animeRo := AnimeRO{}
-		var id sql.NullInt64
-		var name sql.NullString
-		var externalID sql.NullString
-		var russianName sql.NullString
-		var animeURL sql.NullString
-		var kind sql.NullString
-		var animeStatus sql.NullString
-		var epizodes sql.NullInt64
-		var epizodesAired sql.NullInt64
-		var airedOn sql.NullString
-		var releasedOn sql.NullString
-		var posterURL sql.NullString
-		var score sql.NullFloat64
-		var duration sql.NullFloat64
-		var rating sql.NullString
-		var franchase sql.NullString
-		result.Scan(&id,
-			&name, &externalID,
-			&russianName,
-			&animeURL,
-			&kind,
-			&animeStatus,
-			&epizodes,
-			&epizodesAired,
-			&airedOn,
-			&releasedOn,
-			&posterURL,
-			&score,
-			&duration,
-			&rating,
-			&franchase)
-		animeRo.Name = name.String
-		animeRo.RussuanName = russianName.String
-		animeRo.URL = rah.Config.ShikimoriURL + animeURL.String
-		animeRo.PosterURL = rah.Config.ShikimoriURL + posterURL.String
-		return &animeRo
-	} else {
-		return nil
+	if err, animeRO := rah.Dao.GetRandomAnime(animeSQLBuilder); err != nil {
+		json.NewEncoder(w).Encode(animeRO)
 	}
 }

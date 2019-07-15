@@ -13,15 +13,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func CreateSearchAnimeHandler(db *sql.DB, router *mux.Router, config util.Configuration) http.Handler {
-	searchAnimeHandler := &SearchAnimeHandler{Db: db, Router: router, Config: config}
+func CreateSearchAnimeHandler(db *sql.DB, router *mux.Router, config *util.Configuration) http.Handler {
+	animeDao := AnimeDao{Db: db, Config: config}
+	searchAnimeHandler := &SearchAnimeHandler{Dao: &animeDao}
 	return searchAnimeHandler
 }
 
 type SearchAnimeHandler struct {
-	Db     *sql.DB
-	Router *mux.Router
-	Config util.Configuration
+	Dao *AnimeDao
 }
 
 func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -105,12 +104,21 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			animeSQLBuilder.SetLimit(int32(offsetInt64))
 		}
 	}
-	animes := []AnimeRO{}
-	sqlQuery, args := animeSQLBuilder.Build()
-	result, queryErr := as.Db.Query(sqlQuery, args...)
+	if animes, err := as.Dao.SearchAnimes(animeSQLBuilder); err != nil {
+		json.NewEncoder(w).Encode(animes)
+	}
+}
+
+type AnimeDao struct {
+	Db     *sql.DB
+	Config *util.Configuration
+}
+
+func (a *AnimeDao) SearchAnimes(sqlBuilder AnimeQueryBuilder) (animes *[]AnimeRO, err error) {
+	sqlQuery, args := sqlBuilder.Build()
+	result, queryErr := a.Db.Query(sqlQuery, args...)
 	if queryErr != nil {
-		log.Println(queryErr)
-		panic(queryErr)
+		return nil, queryErr
 	}
 	defer result.Close()
 	for result.Next() {
@@ -132,7 +140,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		var duration sql.NullFloat64
 		var rating sql.NullString
 		var franchase sql.NullString
-		result.Scan(
+		scanErr := result.Scan(
 			&rowNumber,
 			&id,
 			&name,
@@ -150,13 +158,85 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			&duration,
 			&rating,
 			&franchase)
+		if scanErr != nil {
+			return nil, scanErr
+		}
 		animeRo.Name = name.String
 		animeRo.RussuanName = russianName.String
-		animeRo.URL = as.Config.ShikimoriURL + animeURL.String
-		animeRo.PosterURL = as.Config.ShikimoriURL + posterURL.String
-		animes = append(animes, animeRo)
+		animeRo.URL = a.Config.ShikimoriURL + animeURL.String
+		animeRo.PosterURL = a.Config.ShikimoriURL + posterURL.String
+		*animes = append(*animes, animeRo)
 	}
-	json.NewEncoder(w).Encode(animes)
+	return animes, err
+}
+
+func (a *AnimeDao) GetCount(sqlBuilder AnimeQueryBuilder) (error, int64) {
+	sqlQuery, args := sqlBuilder.Build()
+	result, queryErr := a.Db.Query(sqlQuery, args...)
+	if queryErr != nil {
+		return queryErr, 0
+	}
+	defer result.Close()
+	if result.Next() {
+		var count sql.NullInt64
+		result.Scan(&count)
+		return nil, count.Int64
+	} else {
+		return nil, 0
+	}
+}
+
+func (a *AnimeDao) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (error, *AnimeRO) {
+	sqlQuery, args := sqlBuilder.Build()
+	result, queryErr := a.Db.Query(sqlQuery, args...)
+	if queryErr != nil {
+		return queryErr, nil
+	}
+	defer result.Close()
+	if result.Next() {
+		animeRo := AnimeRO{}
+		var id sql.NullInt64
+		var name sql.NullString
+		var externalID sql.NullString
+		var russianName sql.NullString
+		var animeURL sql.NullString
+		var kind sql.NullString
+		var animeStatus sql.NullString
+		var epizodes sql.NullInt64
+		var epizodesAired sql.NullInt64
+		var airedOn sql.NullString
+		var releasedOn sql.NullString
+		var posterURL sql.NullString
+		var score sql.NullFloat64
+		var duration sql.NullFloat64
+		var rating sql.NullString
+		var franchase sql.NullString
+		scanErr := result.Scan(&id,
+			&name, &externalID,
+			&russianName,
+			&animeURL,
+			&kind,
+			&animeStatus,
+			&epizodes,
+			&epizodesAired,
+			&airedOn,
+			&releasedOn,
+			&posterURL,
+			&score,
+			&duration,
+			&rating,
+			&franchase)
+		if scanErr != nil {
+			return scanErr, nil
+		}
+		animeRo.Name = name.String
+		animeRo.RussuanName = russianName.String
+		animeRo.URL = a.Config.ShikimoriURL + animeURL.String
+		animeRo.PosterURL = a.Config.ShikimoriURL + posterURL.String
+		return nil, &animeRo
+	} else {
+		return nil, nil
+	}
 }
 
 //AnimeQueryBuilder struct

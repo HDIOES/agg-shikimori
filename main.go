@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"os"
 
 	"net/http"
 
@@ -29,9 +30,13 @@ import (
 func main() {
 	log.Println("Application has been runned")
 	log.Println("Loading configuration...")
+	configPath := "configuration.json"
+	if len(os.Args) > 1 {
+		configPath = os.Args[1]
+	}
 
-	configuration := util.Configuration{}
-	gonfigErr := gonfig.GetConf("configuration.json", &configuration)
+	configuration := &util.Configuration{}
+	gonfigErr := gonfig.GetConf(configPath, configuration)
 	if gonfigErr != nil {
 		panic(gonfigErr)
 	}
