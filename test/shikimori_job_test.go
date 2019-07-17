@@ -74,7 +74,13 @@ func TestShikimoriJobSuccess(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	_, db, configuration, testContainer = prepareDbAndConfiguration(m)
+	preparedDb, preparedConfiguration, preparedTestContainer, err := prepareDbAndConfiguration(m)
+	db = preparedDb
+	configuration = preparedConfiguration
+	testContainer = preparedTestContainer
+	if err != nil {
+		log.Fatal(err)
+	}
 	code := m.Run()
 	testContainer.Close()
 	os.Exit(code)
@@ -88,12 +94,12 @@ func postTest(db *sql.DB, t *testing.T) {
 
 //prepareDbAndConfiguration function prepares data container for using in local testing
 //or uses already prepared data container in case of using docker-compose testing
-func prepareDbAndConfiguration(m *testing.M) (e error, db *sql.DB, configuration *util.Configuration, resource *dockertest.Resource) {
+func prepareDbAndConfiguration(m *testing.M) (db *sql.DB, configuration *util.Configuration, resource *dockertest.Resource, e error) {
 	//create config
 	configuration = &util.Configuration{}
 	gonfigErr := gonfig.GetConf("configuration-test.json", configuration)
 	if gonfigErr != nil {
-		return gonfigErr, nil, nil, nil
+		return nil, nil, nil, gonfigErr
 	}
 	if strings.Compare(os.Args[1], "docker") == 0 {
 		//use already prepared container
@@ -102,7 +108,7 @@ func prepareDbAndConfiguration(m *testing.M) (e error, db *sql.DB, configuration
 		//start up new test data container
 		pool, err := dockertest.NewPool("")
 		if err != nil {
-			return err, nil, nil, nil
+			return nil, nil, nil, err
 		} else {
 			res, rErr := pool.Run("postgres", "11.4", []string{
 				"POSTGRES_USER=test_forna_user",
@@ -113,29 +119,29 @@ func prepareDbAndConfiguration(m *testing.M) (e error, db *sql.DB, configuration
 			postgresURL := "postgres://test_forna_user:12345@localhost:" + res.GetPort("5432/tcp") + "/test_forna?sslmode=disable"
 			configuration.DatabaseURL = postgresURL
 			if rErr != nil {
-				return rErr, nil, nil, resource
+				return nil, nil, resource, rErr
 			}
 		}
 	}
 	//create db
 	db, err := sql.Open("postgres", configuration.DatabaseURL)
 	if err != nil {
-		return err, nil, nil, resource
+		return nil, nil, resource, err
 	}
 	db.SetMaxIdleConns(configuration.MaxIdleConnections)
 	db.SetMaxOpenConns(configuration.MaxOpenConnections)
 	timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
 	timeoutDuration, durationErr := time.ParseDuration(timeout)
 	if durationErr != nil {
-		return durationErr, nil, nil, resource
+		return nil, nil, resource, durationErr
 	} else {
 		db.SetConnMaxLifetime(timeoutDuration)
 	}
 	err = applyMigrations(db)
 	if err != nil {
-		return err, nil, nil, resource
+		return nil, nil, resource, err
 	}
-	return nil, db, configuration, resource
+	return db, configuration, resource, nil
 }
 
 func clearDb(db *sql.DB, t *testing.T) (dbErr error) {
