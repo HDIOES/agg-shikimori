@@ -17,6 +17,8 @@ services:
       - 5432:5432
   app:
     build: .
+    environment:
+      CONFIG_PATH: configuration-dev.json
     ports:
       - 10046:10046
     depends_on:
