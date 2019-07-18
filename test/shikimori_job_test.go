@@ -2,11 +2,11 @@ package test
 
 import (
 	"database/sql"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -20,6 +20,7 @@ import (
 	gock "gopkg.in/h2non/gock.v1"
 )
 
+//TODO remove global vars!!! it's not good practice
 var db *sql.DB
 var configuration *util.Configuration
 var testContainer *dockertest.Resource
@@ -74,15 +75,22 @@ func TestShikimoriJobSuccess(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	preparedDb, preparedConfiguration, preparedTestContainer, err := prepareDbAndConfiguration(m)
-	db = preparedDb
-	configuration = preparedConfiguration
-	testContainer = preparedTestContainer
-	if err != nil {
-		log.Fatal(err)
+	errors := []error{}
+	if preparedConfiguration, err := prepareConfiguration(); err != nil {
+		errors = append(errors, err)
+	} else {
+		configuration = preparedConfiguration
+	}
+	if preparedDb, preparedTestContainer, err := prepareDb(m); err != nil {
+		errors = append(errors, err)
+	} else {
+		testContainer = preparedTestContainer
+		db = preparedDb
 	}
 	code := m.Run()
+	log.Print("Stopping test container")
 	testContainer.Close()
+	log.Fatal(errors)
 	os.Exit(code)
 }
 
@@ -92,56 +100,55 @@ func postTest(db *sql.DB, t *testing.T) {
 	}
 }
 
-//prepareDbAndConfiguration function prepares data container for using in local testing
-//or uses already prepared data container in case of using docker-compose testing
-func prepareDbAndConfiguration(m *testing.M) (db *sql.DB, configuration *util.Configuration, resource *dockertest.Resource, e error) {
-	//create config
+//prepareConfiguration function returns config data from file named "configuration.json"
+func prepareConfiguration() (configuration *util.Configuration, err error) {
 	configuration = &util.Configuration{}
-	gonfigErr := gonfig.GetConf("configuration-test.json", configuration)
+	gonfigErr := gonfig.GetConf("../configuration.json", configuration)
 	if gonfigErr != nil {
-		return nil, nil, nil, gonfigErr
+		return nil, gonfigErr
+	} else {
+		return
 	}
-	if strings.Compare(os.Args[1], "docker") == 0 {
-		//use already prepared container
+}
 
+//prepareDb function prepares data container for using in local testing
+//or uses already prepared data container in case of using docker-compose testing
+func prepareDb(m *testing.M) (*sql.DB, *dockertest.Resource, error) {
+	//start up new test data container
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		return nil, nil, err
 	} else {
-		//start up new test data container
-		pool, err := dockertest.NewPool("")
-		if err != nil {
-			return nil, nil, nil, err
-		} else {
-			res, rErr := pool.Run("postgres", "11.4", []string{
-				"POSTGRES_USER=test_forna_user",
-				"POSTGRES_PASSWORD=12345",
-				"POSTGRES_DB=test_forna"})
-			time.Sleep(10 * time.Second)
-			resource = res
-			postgresURL := "postgres://test_forna_user:12345@localhost:" + res.GetPort("5432/tcp") + "/test_forna?sslmode=disable"
-			configuration.DatabaseURL = postgresURL
-			if rErr != nil {
-				return nil, nil, resource, rErr
-			}
+		resource, rErr := pool.Run(dbType, dbVersion, []string{
+			dbUserVar,
+			dbPasswordVar,
+			dbNameVar})
+		log.Print("Starting test container...")
+		time.Sleep(10 * time.Second)
+		if rErr != nil {
+			return nil, nil, rErr
 		}
+		databaseURL := fmt.Sprintf(dbURLTemplate, resource.GetPort(dbPortMapping))
+		//create db
+		preparedDB, err := sql.Open(dbType, databaseURL)
+		if err != nil {
+			return nil, nil, err
+		}
+		preparedDB.SetMaxIdleConns(configuration.MaxIdleConnections)
+		preparedDB.SetMaxOpenConns(configuration.MaxOpenConnections)
+		timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
+		timeoutDuration, durationErr := time.ParseDuration(timeout)
+		if durationErr != nil {
+			return nil, nil, durationErr
+		} else {
+			preparedDB.SetConnMaxLifetime(timeoutDuration)
+		}
+		err = applyMigrations(preparedDB)
+		if err != nil {
+			return preparedDB, nil, err
+		}
+		return preparedDB, resource, nil
 	}
-	//create db
-	db, err := sql.Open("postgres", configuration.DatabaseURL)
-	if err != nil {
-		return nil, nil, resource, err
-	}
-	db.SetMaxIdleConns(configuration.MaxIdleConnections)
-	db.SetMaxOpenConns(configuration.MaxOpenConnections)
-	timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
-	timeoutDuration, durationErr := time.ParseDuration(timeout)
-	if durationErr != nil {
-		return nil, nil, resource, durationErr
-	} else {
-		db.SetConnMaxLifetime(timeoutDuration)
-	}
-	err = applyMigrations(db)
-	if err != nil {
-		return nil, nil, resource, err
-	}
-	return db, configuration, resource, nil
 }
 
 func clearDb(db *sql.DB, t *testing.T) (dbErr error) {
