@@ -17,7 +17,7 @@ var NDD = errors.New("Database does not contains rows with processed = false") /
 
 type ShikimoriJob struct {
 	Db     *sql.DB
-	Config util.Configuration
+	Config *util.Configuration
 }
 
 func (sj *ShikimoriJob) Run() {
