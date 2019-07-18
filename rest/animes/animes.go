@@ -105,6 +105,8 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if animes, err := as.Dao.SearchAnimes(animeSQLBuilder); err != nil {
+		//TODO error processing
+	} else {
 		json.NewEncoder(w).Encode(animes)
 	}
 }
@@ -114,7 +116,9 @@ type AnimeDao struct {
 	Config *util.Configuration
 }
 
+//SearchAnimes function returns anime array by predefined filter
 func (a *AnimeDao) SearchAnimes(sqlBuilder AnimeQueryBuilder) (animes *[]AnimeRO, err error) {
+	animes = &[]AnimeRO{}
 	sqlQuery, args := sqlBuilder.Build()
 	result, queryErr := a.Db.Query(sqlQuery, args...)
 	if queryErr != nil {
@@ -170,27 +174,28 @@ func (a *AnimeDao) SearchAnimes(sqlBuilder AnimeQueryBuilder) (animes *[]AnimeRO
 	return animes, err
 }
 
-func (a *AnimeDao) GetCount(sqlBuilder AnimeQueryBuilder) (error, int64) {
+func (a *AnimeDao) GetCount(sqlBuilder AnimeQueryBuilder) (int64, error) {
 	sqlQuery, args := sqlBuilder.Build()
 	result, queryErr := a.Db.Query(sqlQuery, args...)
 	if queryErr != nil {
-		return queryErr, 0
+		return 0, queryErr
 	}
 	defer result.Close()
 	if result.Next() {
 		var count sql.NullInt64
 		result.Scan(&count)
-		return nil, count.Int64
+		return count.Int64, nil
 	} else {
-		return nil, 0
+		return 0, nil
 	}
 }
 
-func (a *AnimeDao) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (error, *AnimeRO) {
+//function GetRandomAnime returns random anime by predefined filter
+func (a *AnimeDao) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeRO, error) {
 	sqlQuery, args := sqlBuilder.Build()
 	result, queryErr := a.Db.Query(sqlQuery, args...)
 	if queryErr != nil {
-		return queryErr, nil
+		return nil, queryErr
 	}
 	defer result.Close()
 	if result.Next() {
@@ -227,13 +232,13 @@ func (a *AnimeDao) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (error, *AnimeRO
 			&rating,
 			&franchase)
 		if scanErr != nil {
-			return scanErr, nil
+			return nil, scanErr
 		}
 		animeRo.Name = name.String
 		animeRo.RussuanName = russianName.String
 		animeRo.URL = a.Config.ShikimoriURL + animeURL.String
 		animeRo.PosterURL = a.Config.ShikimoriURL + posterURL.String
-		return nil, &animeRo
+		return &animeRo, nil
 	} else {
 		return nil, nil
 	}

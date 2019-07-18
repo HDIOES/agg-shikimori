@@ -93,11 +93,15 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	animeSQLBuilder.SetCountOnly(true)
 	animeSQLBuilder.SetRowNumber(0)
-	if err, countOfAnimes := rah.Dao.GetCount(animeSQLBuilder); err != nil {
+	if countOfAnimes, err := rah.Dao.GetCount(animeSQLBuilder); err != nil {
+		//TODO error processing
+	} else {
 		animeSQLBuilder.SetCountOnly(false)
 		animeSQLBuilder.SetRowNumber(rand.Int63n(countOfAnimes + 1))
 	}
-	if err, animeRO := rah.Dao.GetRandomAnime(animeSQLBuilder); err != nil {
+	if animeRO, err := rah.Dao.GetRandomAnime(animeSQLBuilder); err != nil {
+		//TODO error processing
+	} else {
 		json.NewEncoder(w).Encode(animeRO)
 	}
 }
