@@ -31,10 +31,9 @@ func main() {
 	log.Println("Application has been runned")
 	log.Println("Loading configuration...")
 	configPath := "configuration.json"
-	if len(os.Args) > 1 {
-		configPath = os.Args[1]
+	if os.Getenv("CONFIG_PATH") != "" {
+		configPath = os.Getenv("CONFIG_PATH")
 	}
-
 	configuration := &util.Configuration{}
 	gonfigErr := gonfig.GetConf(configPath, configuration)
 	if gonfigErr != nil {
