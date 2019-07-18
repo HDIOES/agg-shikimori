@@ -81,20 +81,20 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.Handle("/animes/random", animes.CreateRandomAnimeHandler(db, configuration)).
+	router.Handle("/api/animes/random", animes.CreateRandomAnimeHandler(db, configuration)).
 		Methods("GET")
 
-	router.Handle("/animes/search", animes.CreateSearchAnimeHandler(db, router, configuration)).
+	router.Handle("/api/animes/search", animes.CreateSearchAnimeHandler(db, router, configuration)).
 		Methods("GET")
 
-	router.HandleFunc("/animes/job", func(w http.ResponseWriter, r *http.Request) {
-		//go shikimoriJob.Run()
+	router.HandleFunc("/api/animes/job", func(w http.ResponseWriter, r *http.Request) {
+		go shikimoriJob.Run()
 	}).Methods("GET")
 
-	router.Handle("/genres/search", genres.CreateGenreHandler(db)).
+	router.Handle("/api/genres/search", genres.CreateGenreHandler(db)).
 		Methods("GET")
 
-	router.Handle("/studios/search", studios.CreateStudioHandler(db)).
+	router.Handle("/api/studios/search", studios.CreateStudioHandler(db)).
 		Methods("GET")
 
 	http.Handle("/", router)
