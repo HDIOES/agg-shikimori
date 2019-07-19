@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"os"
 
 	"net/http"
 
@@ -29,9 +30,12 @@ import (
 func main() {
 	log.Println("Application has been runned")
 	log.Println("Loading configuration...")
-
-	configuration := util.Configuration{}
-	gonfigErr := gonfig.GetConf("configuration.json", &configuration)
+	configPath := "configuration.json"
+	if os.Getenv("CONFIG_PATH") != "" {
+		configPath = os.Getenv("CONFIG_PATH")
+	}
+	configuration := &util.Configuration{}
+	gonfigErr := gonfig.GetConf(configPath, configuration)
 	if gonfigErr != nil {
 		panic(gonfigErr)
 	}
@@ -76,20 +80,20 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.Handle("/animes/random", animes.CreateAnimeHandler(db, configuration)).
+	router.Handle("/api/animes/random", animes.CreateRandomAnimeHandler(db, configuration)).
 		Methods("GET")
 
-	router.Handle("/animes/search", animes.CreateSearchAnimeHandler(db, router, configuration)).
+	router.Handle("/api/animes/search", animes.CreateSearchAnimeHandler(db, router, configuration)).
 		Methods("GET")
 
-	router.HandleFunc("/animes/job", func(w http.ResponseWriter, r *http.Request) {
-		//go shikimoriJob.Run()
+	router.HandleFunc("/api/animes/job", func(w http.ResponseWriter, r *http.Request) {
+		go shikimoriJob.Run()
 	}).Methods("GET")
 
-	router.Handle("/genres/search", genres.CreateGenreHandler(db)).
+	router.Handle("/api/genres/search", genres.CreateGenreHandler(db)).
 		Methods("GET")
 
-	router.Handle("/studios/search", studios.CreateStudioHandler(db)).
+	router.Handle("/api/studios/search", studios.CreateStudioHandler(db)).
 		Methods("GET")
 
 	http.Handle("/", router)
