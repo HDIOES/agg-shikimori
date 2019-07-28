@@ -7,7 +7,6 @@ import (
 
 	"net/http"
 
-	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
 
@@ -21,10 +20,7 @@ import (
 	"github.com/gorilla/handlers"
 
 	"github.com/HDIOES/cpa-backend/integration"
-	"github.com/HDIOES/cpa-backend/rest/animes"
-	"github.com/HDIOES/cpa-backend/rest/genres"
-	"github.com/HDIOES/cpa-backend/rest/studios"
-	"github.com/HDIOES/cpa-backend/util"
+	"github.com/HDIOES/cpa-backend/rest/util"
 )
 
 func main() {
@@ -77,26 +73,7 @@ func main() {
 	if pingErr != nil {
 		panic(pingErr)
 	}
-
-	router := mux.NewRouter()
-
-	router.Handle("/api/animes/random", animes.CreateRandomAnimeHandler(db, configuration)).
-		Methods("GET")
-
-	router.Handle("/api/animes/search", animes.CreateSearchAnimeHandler(db, router, configuration)).
-		Methods("GET")
-
-	router.HandleFunc("/api/animes/job", func(w http.ResponseWriter, r *http.Request) {
-		go shikimoriJob.Run()
-	}).Methods("GET")
-
-	router.Handle("/api/genres/search", genres.CreateGenreHandler(db)).
-		Methods("GET")
-
-	router.Handle("/api/studios/search", studios.CreateStudioHandler(db)).
-		Methods("GET")
-
-	http.Handle("/", router)
+	ConfigureRouter(db, configuration)
 	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})

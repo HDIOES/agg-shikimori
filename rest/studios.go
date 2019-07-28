@@ -1,4 +1,4 @@
-package studios
+package rest
 
 import (
 	"database/sql"

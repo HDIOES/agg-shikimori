@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/HDIOES/cpa-backend/util"
+	"github.com/HDIOES/cpa-backend/rest/util"
 )
 
 var NDD = errors.New("Database does not contains rows with processed = false") //'No database data' error

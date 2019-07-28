@@ -1,4 +1,4 @@
-package animes
+package rest
 
 import (
 	"database/sql"
@@ -8,8 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HDIOES/cpa-backend/rest"
-	"github.com/HDIOES/cpa-backend/util"
+	"github.com/HDIOES/cpa-backend/rest/util"
 	"github.com/gorilla/mux"
 )
 
@@ -43,7 +42,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if score, scoreOk := vars["score"]; scoreOk {
 		if scoreInt64, parseErr := strconv.ParseInt(score[0], 10, 32); parseErr != nil {
-			rest.HandleErr(parseErr, w, 400, "Score not valid")
+			HandleErr(parseErr, w, 400, "Score not valid")
 			return
 		} else {
 			animeSQLBuilder.SetScore(int32(scoreInt64))
@@ -51,7 +50,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if genre, genreOk := vars["genre"]; genreOk {
 		if scoreInt64, parseErr := strconv.ParseInt(genre[0], 10, 32); parseErr != nil {
-			rest.HandleErr(parseErr, w, 400, "Genre not valid")
+			HandleErr(parseErr, w, 400, "Genre not valid")
 			return
 		} else {
 			animeSQLBuilder.SetScore(int32(scoreInt64))
@@ -59,7 +58,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if studio, studioOk := vars["studio"]; studioOk {
 		if studioInt64, parseErr := strconv.ParseInt(studio[0], 10, 64); parseErr != nil {
-			rest.HandleErr(parseErr, w, 400, "Studio not valid")
+			HandleErr(parseErr, w, 400, "Studio not valid")
 			return
 		} else {
 			animeSQLBuilder.AddStudioID(studioInt64)
@@ -77,7 +76,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if ids, idsOk := vars["ids"]; idsOk {
 		for _, id := range strings.Split(ids[0], " ") {
 			if idInt64, parseErr := strconv.ParseInt(id, 10, 64); parseErr != nil {
-				rest.HandleErr(parseErr, w, 400, "Ids not valid")
+				HandleErr(parseErr, w, 400, "Ids not valid")
 				return
 			} else {
 				animeSQLBuilder.AddId(idInt64)
@@ -87,7 +86,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if excludeIds, excludeIdsOk := vars["exclude_ids"]; excludeIdsOk {
 		for _, id := range strings.Split(excludeIds[0], " ") {
 			if excludeIDInt64, parseErr := strconv.ParseInt(id, 10, 64); parseErr != nil {
-				rest.HandleErr(parseErr, w, 400, "Exclude_ids not valid")
+				HandleErr(parseErr, w, 400, "Exclude_ids not valid")
 				return
 			} else {
 				animeSQLBuilder.AddExcludeId(excludeIDInt64)
@@ -97,7 +96,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	if limit, limitOk := vars["limit"]; limitOk {
 		if limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32); parseErr != nil {
-			rest.HandleErr(parseErr, w, 400, "Limit not valid")
+			HandleErr(parseErr, w, 400, "Limit not valid")
 			return
 		} else {
 			animeSQLBuilder.SetLimit(int32(limitInt64))
@@ -105,17 +104,17 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	if offset, offsetOk := vars["offset"]; offsetOk {
 		if offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32); parseErr != nil {
-			rest.HandleErr(parseErr, w, 400, "Offset not valid")
+			HandleErr(parseErr, w, 400, "Offset not valid")
 			return
 		} else {
 			animeSQLBuilder.SetLimit(int32(offsetInt64))
 		}
 	}
 	if animes, err := as.Dao.SearchAnimes(animeSQLBuilder); err != nil {
-		rest.HandleErr(err, w, 400, "Exclude_ids not valid")
+		HandleErr(err, w, 400, "Exclude_ids not valid")
 		return
 	} else {
-		rest.ReturnResponseAsJSON(w, animes, 200)
+		ReturnResponseAsJSON(w, animes, 200)
 	}
 }
 

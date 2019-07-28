@@ -1,4 +1,4 @@
-package animes
+package rest
 
 import (
 	"database/sql"
@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HDIOES/cpa-backend/util"
+	"github.com/HDIOES/cpa-backend/rest/util"
 )
 
 //CreateRandomAnimeHandler function receive handler for rest-method /animes/random

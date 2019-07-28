@@ -1,4 +1,4 @@
-package genres
+package rest
 
 import (
 	"database/sql"
