@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"testing"
@@ -25,6 +27,7 @@ var testContainer *dockertest.Resource
 var router *mux.Router
 
 func TestMain(m *testing.M) {
+	//prepare test database, test configuration and test router
 	errors := []error{}
 	if preparedConfiguration, err := prepareConfiguration(); err != nil {
 		errors = append(errors, err)
@@ -40,14 +43,106 @@ func TestMain(m *testing.M) {
 	router = rest.ConfigureRouter(db, configuration)
 	code := m.Run()
 	log.Print("Stopping test container")
+	db.Close()
 	testContainer.Close()
 	log.Fatal(errors)
 	os.Exit(code)
 }
 
-func postTest(db *sql.DB, t *testing.T) {
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
+func executeRequest(req *http.Request) *httptest.ResponseRecorder {
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	return rr
+}
+
+func insertAnimeToDatabase(t *testing.T,
+	externalID, animeName, russian, animeURL, kind, animeStatus string,
+	epizodes, epizodesAired int,
+	airedOn, releasedOn time.Time,
+	posterURL string,
+	processed bool,
+	externalStudioID, externalGenreID string) error {
+	tx, beginErr := db.Begin()
+	if beginErr != nil {
+		return beginErr
+	}
+	//insert anime
+	_, insertAnimeErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed, lastmodifytime) "+
+		"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())",
+		externalID,
+		animeName,
+		russian,
+		animeURL,
+		kind,
+		animeStatus,
+		epizodes,
+		epizodesAired,
+		airedOn.Format("2006-01-02"),
+		releasedOn.Format("2006-01-02"),
+		posterURL,
+		processed)
+	if insertAnimeErr != nil {
+		return rollbackTransaction(tx, insertAnimeErr)
+	}
+	//insert anime_studio
+	_, insertAnimeStudioErr := tx.Exec("INSERT INTO anime_studio (anime_id, studio_id) "+
+		" SELECT anime.id, studio.id FROM anime JOIN studio ON anime.external_id = $1 AND studio.external_id = $2", externalID, externalStudioID)
+	if insertAnimeStudioErr != nil {
+		return rollbackTransaction(tx, insertAnimeStudioErr)
+	}
+	//insert anime_genre
+	_, insertAnimeGenreErr := tx.Exec("INSERT INTO anime_genre (anime_id, genre_id) "+
+		" SELECT anime.id, genre.id FROM anime JOIN genre ON anime.external_id = $1 AND genre.external_id = $2", externalID, externalGenreID)
+	if insertAnimeGenreErr != nil {
+		return rollbackTransaction(tx, insertAnimeGenreErr)
+	}
+	if commitErr := tx.Commit(); commitErr != nil {
+		return rollbackTransaction(tx, commitErr)
+	}
+	return nil
+}
+
+func insertStudioToDatabase(t *testing.T, externalID, studioName, filteredStudioName string, isReal bool, imageURL string) error {
+	tx, beginErr := db.Begin()
+	if beginErr != nil {
+		return beginErr
+	}
+	_, txErr := tx.Exec("INSERT INTO studio (external_id, studio_name, filtered_studio_name, is_real, image_url) VALUES ($1, $2, $3, $4, $5)",
+		externalID,
+		studioName,
+		filteredStudioName,
+		isReal,
+		imageURL)
+	if txErr != nil {
+		return rollbackTransaction(tx, txErr)
+	}
+	if commitErr := tx.Commit(); commitErr != nil {
+		return rollbackTransaction(tx, commitErr)
+	}
+	return nil
+}
+
+func insertGenreToDatabase(t *testing.T, externalID, genreName, russian, kind string) error {
+	tx, beginErr := db.Begin()
+	if beginErr != nil {
+		return beginErr
+	}
+	_, txErr :=
+		tx.Exec("INSERT INTO genre (external_id, genre_name, russian, kind) VALUES ($1, $2, $3, $4)", externalID, genreName, russian, kind)
+	if txErr != nil {
+		return rollbackTransaction(tx, txErr)
+	}
+	if commitErr := tx.Commit(); commitErr != nil {
+		return rollbackTransaction(tx, commitErr)
+	}
+	return nil
+}
+
+func rollbackTransaction(tx *sql.Tx, err error) error {
+	if rollbackErr := tx.Rollback(); rollbackErr != nil {
+		return rollbackErr
+	} else {
+		return err
 	}
 }
 
