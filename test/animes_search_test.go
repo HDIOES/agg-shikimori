@@ -11,17 +11,20 @@ import (
 
 func TestSearchAnimesSuccess(t *testing.T) {
 	//fill database
-	genreIDErr := insertGenreToDatabase(t, "3", "genre1", "трешкор", "anime")
-	if genreIDErr != nil {
-		log.Fatal(genreIDErr)
+	insertGenreErr := insertGenreToDatabase(t, "3", "genre1", "трешкор", "anime")
+	if insertGenreErr != nil {
+		log.Fatal(insertGenreErr)
 	}
-	studioIDErr := insertStudioToDatabase(t, "4", "studio", "studio", true, "/url.jpg")
-	if studioIDErr != nil {
-		log.Fatal(studioIDErr)
+	insertStudioErr := insertStudioToDatabase(t, "4", "studio", "studio", true, "/url.jpg")
+	if insertStudioErr != nil {
+		log.Fatal(insertStudioErr)
 	}
-	insertAnimeToDatabase(t, "123", "anime", "аниме", "/url.jpg", "tv", "ongoing", 10, 5,
+	insertAnimeErr := insertAnimeToDatabase(t, "123", "anime", "аниме", "/url.jpg", "tv", "ongoing", 10, 5,
 		time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC),
 		time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC), "/url.jpg", false, "4", "3")
+	if insertAnimeErr != nil {
+		log.Fatal(insertAnimeErr)
+	}
 	//create request
 	request, _ := http.NewRequest("GET", "/api/animes/search", nil)
 	executeRequest(request)
