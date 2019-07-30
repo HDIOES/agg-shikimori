@@ -1,7 +1,6 @@
 package test
 
 import (
-	"log"
 	"net/http"
 	"testing"
 	"time"
@@ -10,22 +9,27 @@ import (
 )
 
 func TestSearchAnimesSuccess(t *testing.T) {
+	const externalGenreID string = "1"
+	const externalStudioID string = "1"
+	const externalAnimeID string = "1"
 	//fill database
-	insertGenreErr := insertGenreToDatabase(t, "3", "genre1", "трешкор", "anime")
+	insertGenreErr := insertGenreToDatabase(t, externalGenreID, "trashcore", "трешкор", "anime")
 	if insertGenreErr != nil {
-		log.Fatal(insertGenreErr)
+		t.Fatal(insertGenreErr)
 	}
-	insertStudioErr := insertStudioToDatabase(t, "4", "studio", "studio", true, "/url.jpg")
+	insertStudioErr := insertStudioToDatabase(t, externalStudioID, "trash studio", "треш студия", true, "/url.jpg")
 	if insertStudioErr != nil {
-		log.Fatal(insertStudioErr)
+		t.Fatal(insertStudioErr)
 	}
-	insertAnimeErr := insertAnimeToDatabase(t, "123", "anime", "аниме", "/url.jpg", "tv", "ongoing", 10, 5,
+	insertAnimeErr := insertAnimeToDatabase(t, externalAnimeID, "One Punch Man", "Один Удар Человек", "/url.jpg", "tv", "ongoing", 10, 5,
 		time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC),
-		time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC), "/url.jpg", false, "4", "3")
+		time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC), "/url.jpg", false, externalStudioID, externalGenreID)
 	if insertAnimeErr != nil {
-		log.Fatal(insertAnimeErr)
+		t.Fatal(insertAnimeErr)
 	}
 	//create request
 	request, _ := http.NewRequest("GET", "/api/animes/search", nil)
 	executeRequest(request)
+	//asserts
+
 }

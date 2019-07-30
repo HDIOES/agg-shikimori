@@ -28,25 +28,26 @@ var router *mux.Router
 
 func TestMain(m *testing.M) {
 	//prepare test database, test configuration and test router
-	errors := []error{}
+	os.Exit(wrapperTestMain(m))
+}
+
+func wrapperTestMain(m *testing.M) int {
 	if preparedConfiguration, err := prepareConfiguration(); err != nil {
-		errors = append(errors, err)
+		panic(err)
 	} else {
 		configuration = preparedConfiguration
 	}
-	if preparedDb, preparedTestContainer, err := prepareDb(m); err != nil {
-		errors = append(errors, err)
+	if preparedDb, preparedTestContainer, err := prepareDb(); err != nil {
+		panic(err)
 	} else {
+		defer preparedTestContainer.Close()
+		defer preparedDb.Close()
 		testContainer = preparedTestContainer
 		db = preparedDb
 	}
 	router = rest.ConfigureRouter(db, configuration)
-	code := m.Run()
-	log.Print("Stopping test container")
-	db.Close()
-	testContainer.Close()
-	log.Fatal(errors)
-	os.Exit(code)
+	defer log.Print("Stopping test container")
+	return m.Run()
 }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
@@ -85,7 +86,7 @@ func insertAnimeToDatabase(t *testing.T,
 		return rollbackTransaction(tx, insertAnimeErr)
 	}
 	//insert anime_studio
-	_, insertAnimeStudioErr := tx.Exec("INSERT INTO anime_studio (anime_id, studio_id) "+
+	_, insertAnimeStudioErr := tx.Exec("INSERT INTO anime_studio (anime_id, studio_id)"+
 		" SELECT anime.id, studio.id FROM anime JOIN studio ON anime.external_id = $1 AND studio.external_id = $2", externalID, externalStudioID)
 	if insertAnimeStudioErr != nil {
 		return rollbackTransaction(tx, insertAnimeStudioErr)
@@ -141,9 +142,8 @@ func insertGenreToDatabase(t *testing.T, externalID, genreName, russian, kind st
 func rollbackTransaction(tx *sql.Tx, err error) error {
 	if rollbackErr := tx.Rollback(); rollbackErr != nil {
 		return rollbackErr
-	} else {
-		return err
 	}
+	return err
 }
 
 //prepareConfiguration function returns config data from file named "configuration.json"
@@ -159,77 +159,65 @@ func prepareConfiguration() (configuration *util.Configuration, err error) {
 
 //prepareDb function prepares data container for using in local testing
 //or uses already prepared data container in case of using docker-compose testing
-func prepareDb(m *testing.M) (*sql.DB, *dockertest.Resource, error) {
+func prepareDb() (*sql.DB, *dockertest.Resource, error) {
 	//start up new test data container
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return nil, nil, err
-	} else {
-		resource, rErr := pool.Run(dbType, dbVersion, []string{
-			dbUserVar,
-			dbPasswordVar,
-			dbNameVar})
-		log.Print("Starting test container...")
-		time.Sleep(10 * time.Second)
-		if rErr != nil {
-			return nil, nil, rErr
-		}
-		databaseURL := fmt.Sprintf(dbURLTemplate, resource.GetPort(dbPortMapping))
-		//create db
-		preparedDB, err := sql.Open(dbType, databaseURL)
-		if err != nil {
-			return nil, nil, err
-		}
-		preparedDB.SetMaxIdleConns(configuration.MaxIdleConnections)
-		preparedDB.SetMaxOpenConns(configuration.MaxOpenConnections)
-		timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
-		timeoutDuration, durationErr := time.ParseDuration(timeout)
-		if durationErr != nil {
-			return nil, nil, durationErr
-		} else {
-			preparedDB.SetConnMaxLifetime(timeoutDuration)
-		}
-		err = applyMigrations(preparedDB)
-		if err != nil {
-			return preparedDB, nil, err
-		}
-		return preparedDB, resource, nil
 	}
+	resource, rErr := pool.Run(dbType, dbVersion, []string{
+		dbUserVar,
+		dbPasswordVar,
+		dbNameVar})
+	log.Print("Starting test container...")
+	time.Sleep(10 * time.Second)
+	if rErr != nil {
+		defer resource.Close()
+		return nil, nil, rErr
+	}
+	log.Print("Port - " + resource.GetPort(dbPortMapping))
+	databaseURL := fmt.Sprintf(dbURLTemplate, resource.GetPort(dbPortMapping))
+	//create db
+	preparedDB, err := sql.Open(dbType, databaseURL)
+	if err != nil {
+		defer testContainer.Close()
+		defer preparedDB.Close()
+		return nil, nil, err
+	}
+	preparedDB.SetMaxIdleConns(configuration.MaxIdleConnections)
+	preparedDB.SetMaxOpenConns(configuration.MaxOpenConnections)
+	timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
+	timeoutDuration, durationErr := time.ParseDuration(timeout)
+	if durationErr != nil {
+		return nil, nil, durationErr
+	}
+	preparedDB.SetConnMaxLifetime(timeoutDuration)
+	err = applyMigrations(preparedDB)
+	if err != nil {
+		return nil, nil, err
+	}
+	return preparedDB, resource, nil
 }
 
-func clearDb(db *sql.DB, t *testing.T) (dbErr error) {
+func clearDb(db *sql.DB) error {
 	tx, txErr := db.Begin()
 	if txErr != nil {
-		t.Log(txErr)
 		return txErr
 	}
-	defer func(tx *sql.Tx) {
-		if dbErr != nil {
-			t.Log(dbErr)
-			if err := tx.Rollback(); err != nil {
-				t.Log(err)
-			}
-		}
-	}(tx)
 	if _, err := tx.Exec("DELETE FROM ANIME_STUDIO"); err != nil {
-		dbErr = err
-		return dbErr
+		return rollbackTransaction(tx, err)
 	}
 	if _, err := tx.Exec("DELETE FROM STUDIO"); err != nil {
-		dbErr = err
-		return dbErr
+		return rollbackTransaction(tx, err)
 	}
 	if _, err := tx.Exec("DELETE FROM ANIME_GENRE"); err != nil {
-		dbErr = err
-		return dbErr
+		return rollbackTransaction(tx, err)
 	}
 	if _, err := tx.Exec("DELETE FROM ANIME"); err != nil {
-		dbErr = err
-		return dbErr
+		return rollbackTransaction(tx, err)
 	}
 	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		dbErr = txCommitErr
-		return dbErr
+		return rollbackTransaction(tx, txCommitErr)
 	}
 	return nil
 }
@@ -238,7 +226,6 @@ func applyMigrations(db *sql.DB) error {
 	migrations := &migrate.FileMigrationSource{
 		Dir: "../migrations",
 	}
-
 	if n, err := migrate.Exec(db, "postgres", migrations, migrate.Up); err == nil {
 		log.Printf("Applied %d migrations!\n", n)
 	} else {

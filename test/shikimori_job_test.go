@@ -12,7 +12,7 @@ import (
 
 //TestSimple function
 func TestShikimoriJobSuccess(t *testing.T) {
-	clearDb(db, t)
+	clearDb(db)
 	defer gock.Off()
 	shikimoriJob := &integration.ShikimoriJob{Db: db, Config: configuration}
 
