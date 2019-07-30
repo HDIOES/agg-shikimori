@@ -5,10 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	_ "github.com/lib/pq"
 )
 
 func TestSearchAnimesSuccess(t *testing.T) {
+	clearDb(db)
 	const externalGenreID string = "1"
 	const externalStudioID string = "1"
 	const externalAnimeID string = "1"
@@ -29,7 +32,26 @@ func TestSearchAnimesSuccess(t *testing.T) {
 	}
 	//create request
 	request, _ := http.NewRequest("GET", "/api/animes/search", nil)
-	executeRequest(request)
+	recorder := executeRequest(request)
 	//asserts
+	assert.Equal(t, 200, recorder.Code)
 
+}
+
+func TestSearchAnimes_limitFail(t *testing.T) {
+	request, _ := http.NewRequest("GET", "/api/animes/search?limit=34df4", nil)
+	recorder := executeRequest(request)
+	assert.Equal(t, 400, recorder.Code)
+}
+
+func TestSearchAnimes_offsetFail(t *testing.T) {
+	request, _ := http.NewRequest("GET", "/api/animes/search?offset=df44", nil)
+	recorder := executeRequest(request)
+	assert.Equal(t, 400, recorder.Code)
+}
+
+func TestSearchAnimes_scoreFail(t *testing.T) {
+	request, _ := http.NewRequest("GET", "/api/animes/search?score=hnk", nil)
+	recorder := executeRequest(request)
+	assert.Equal(t, 400, recorder.Code)
 }

@@ -49,19 +49,13 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if genre, genreOk := vars["genre"]; genreOk {
-		if scoreInt64, parseErr := strconv.ParseInt(genre[0], 10, 32); parseErr != nil {
-			HandleErr(parseErr, w, 400, "Genre not valid")
-			return
-		} else {
-			animeSQLBuilder.SetScore(int32(scoreInt64))
+		for _, genreID := range strings.Split(genre[0], ",") {
+			animeSQLBuilder.AddGenreId(genreID)
 		}
 	}
 	if studio, studioOk := vars["studio"]; studioOk {
-		if studioInt64, parseErr := strconv.ParseInt(studio[0], 10, 64); parseErr != nil {
-			HandleErr(parseErr, w, 400, "Studio not valid")
-			return
-		} else {
-			animeSQLBuilder.AddStudioID(studioInt64)
+		for _, studioID := range strings.Split(studio[0], ",") {
+			animeSQLBuilder.AddStudioID(studioID)
 		}
 	}
 	if duration, durationOk := vars["duration"]; durationOk {
@@ -74,23 +68,13 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		animeSQLBuilder.SetFranchise(franchise[0])
 	}
 	if ids, idsOk := vars["ids"]; idsOk {
-		for _, id := range strings.Split(ids[0], " ") {
-			if idInt64, parseErr := strconv.ParseInt(id, 10, 64); parseErr != nil {
-				HandleErr(parseErr, w, 400, "Ids not valid")
-				return
-			} else {
-				animeSQLBuilder.AddId(idInt64)
-			}
+		for _, id := range strings.Split(ids[0], ",") {
+			animeSQLBuilder.AddId(id)
 		}
 	}
 	if excludeIds, excludeIdsOk := vars["exclude_ids"]; excludeIdsOk {
-		for _, id := range strings.Split(excludeIds[0], " ") {
-			if excludeIDInt64, parseErr := strconv.ParseInt(id, 10, 64); parseErr != nil {
-				HandleErr(parseErr, w, 400, "Exclude_ids not valid")
-				return
-			} else {
-				animeSQLBuilder.AddExcludeId(excludeIDInt64)
-			}
+		for _, id := range strings.Split(excludeIds[0], ",") {
+			animeSQLBuilder.AddExcludeId(id)
 		}
 	}
 
@@ -111,7 +95,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if animes, err := as.Dao.SearchAnimes(animeSQLBuilder); err != nil {
-		HandleErr(err, w, 400, "Exclude_ids not valid")
+		HandleErr(err, w, 400, "")
 		return
 	} else {
 		ReturnResponseAsJSON(w, animes, 200)
@@ -260,23 +244,23 @@ type AnimeQueryBuilder struct {
 	Phrase     string
 	Order      string
 	Score      int32
-	GenreIds   []int64
-	StudioIds  []int64
+	GenreIds   []string
+	StudioIds  []string
 	Duration   string
 	Rating     string
 	Franchise  string
-	Ids        []int64
-	ExcludeIds []int64
+	Ids        []string
+	ExcludeIds []string
 	SQLQuery   strings.Builder
 	CountOnly  bool
 	RowNumber  int64
 }
 
-func (aqb *AnimeQueryBuilder) AddExcludeId(excludeId int64) {
+func (aqb *AnimeQueryBuilder) AddExcludeId(excludeId string) {
 	aqb.ExcludeIds = append(aqb.ExcludeIds, excludeId)
 }
 
-func (aqb *AnimeQueryBuilder) AddId(id int64) {
+func (aqb *AnimeQueryBuilder) AddId(id string) {
 	aqb.Ids = append(aqb.Ids, id)
 }
 
@@ -292,11 +276,11 @@ func (aqb *AnimeQueryBuilder) SetDuration(duration string) {
 	aqb.Duration = duration
 }
 
-func (aqb *AnimeQueryBuilder) AddStudioID(studioID int64) {
+func (aqb *AnimeQueryBuilder) AddStudioID(studioID string) {
 	aqb.StudioIds = append(aqb.StudioIds, studioID)
 }
 
-func (aqb *AnimeQueryBuilder) AddGenreId(genreID int64) {
+func (aqb *AnimeQueryBuilder) AddGenreId(genreID string) {
 	aqb.GenreIds = append(aqb.GenreIds)
 }
 
