@@ -55,3 +55,9 @@ func TestSearchAnimes_scoreFail(t *testing.T) {
 	recorder := executeRequest(request)
 	assert.Equal(t, 400, recorder.Code)
 }
+
+func TestRandom_scoreFail(t *testing.T) {
+	request, _ := http.NewRequest("GET", "/api/animes/random?score=hnk", nil)
+	recorder := executeRequest(request)
+	assert.Equal(t, 400, recorder.Code)
+}
