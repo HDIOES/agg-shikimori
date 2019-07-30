@@ -20,13 +20,20 @@ type ShikimoriJob struct {
 	Config *util.Configuration
 }
 
+//Run function
 func (sj *ShikimoriJob) Run() {
 	defer log.Println("Job has been ended")
 	client := &http.Client{}
 	//at start we need to load studios and genres
-	sj.ProcessStudios(client)
+	if processStudioErr := sj.ProcessStudios(client); processStudioErr != nil {
+		log.Print("Studios processing error", processStudioErr)
+		return
+	}
 	time.Sleep(1000 * time.Millisecond)
-	sj.ProcessGenres(client)
+	if processGenresErr := sj.ProcessGenres(client); processGenresErr != nil {
+		log.Print("Genres processing error", processGenresErr)
+		return
+	}
 	time.Sleep(1000 * time.Millisecond)
 	//then we have to load anime list
 	animes := &[]Anime{}
@@ -55,6 +62,7 @@ func (sj *ShikimoriJob) Run() {
 	}
 }
 
+//GetNotProcessedExternalAnimeIds function
 func (sj *ShikimoriJob) GetNotProcessedExternalAnimeIds() (externalAnimeIDs *[]string, err error) {
 	getAnimeIdsRows, getAnimeIdsErr := sj.Db.Query("SELECT external_id FROM anime WHERE processed = false")
 	if getAnimeIdsErr != nil {
@@ -167,26 +175,26 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) error {
 func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 	tx, txErr := sj.Db.Begin()
 	if txErr != nil {
-		return txErr
+		return rollbackTransaction(tx, txErr)
 	}
 	genres := &[]Genre{}
 	resp, getGenresErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriGenreURL)
 	if getGenresErr != nil {
-		return getGenresErr
+		return rollbackTransaction(tx, getGenresErr)
 	}
 	defer resp.Body.Close()
 	body, readGenresErr := ioutil.ReadAll(resp.Body)
 	if readGenresErr != nil {
-		return readGenresErr
+		return rollbackTransaction(tx, readGenresErr)
 	}
 	parseGenresError := json.Unmarshal(body, genres)
 	if parseGenresError != nil {
-		return parseGenresError
+		return rollbackTransaction(tx, parseGenresError)
 	}
 	for i := 0; i < len(*genres); i++ {
 		rows, txExecSelectErr := tx.Query("SELECT external_id FROM genre WHERE external_id = $1", (*genres)[i].ID)
 		if txExecSelectErr != nil {
-			return txExecSelectErr
+			return rollbackTransaction(tx, txExecSelectErr)
 		}
 		if !rows.Next() {
 			_, txExecErr := tx.Exec("INSERT INTO genre (external_id, genre_name, russian, kind) "+
@@ -214,20 +222,20 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 	studios := &[]Studio{}
 	tx, txErr := sj.Db.Begin()
 	if txErr != nil {
-		return txErr
+		return rollbackTransaction(tx, txErr)
 	}
 	resp, getStudioErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriStudioURL)
 	if getStudioErr != nil {
-		return getStudioErr
+		return rollbackTransaction(tx, getStudioErr)
 	}
 	defer resp.Body.Close()
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
 	if readStudiosErr != nil {
-		return readStudiosErr
+		return rollbackTransaction(tx, readStudiosErr)
 	}
 	parseError := json.Unmarshal(body, studios)
 	if parseError != nil {
-		return parseError
+		return rollbackTransaction(tx, parseError)
 	}
 	for i := 0; i < len(*studios); i++ {
 		rows, txExecSelectErr := tx.Query("SELECT external_id FROM studio WHERE external_id = $1", (*studios)[i].ID)
@@ -261,20 +269,20 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) (*[]A
 	animes := &[]Anime{}
 	tx, txErr := sj.Db.Begin()
 	if txErr != nil {
-		return nil, txErr
+		return nil, rollbackTransaction(tx, txErr)
 	}
 	resp, animesGetErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriAnimeSearchURL + "?page=" + strconv.FormatInt(page, 10) + "&limit=50")
 	if animesGetErr != nil {
-		return nil, animesGetErr
+		return nil, rollbackTransaction(tx, animesGetErr)
 	}
 	defer resp.Body.Close()
 	body, readAnimesErr := ioutil.ReadAll(resp.Body)
 	if readAnimesErr != nil {
-		return nil, readAnimesErr
+		return nil, rollbackTransaction(tx, readAnimesErr)
 	}
 	parseAnimesError := json.Unmarshal(body, animes)
 	if parseAnimesError != nil {
-		return nil, parseAnimesError
+		return nil, rollbackTransaction(tx, parseAnimesError)
 	}
 	//function for inserting anime
 	insertAnimeFunc := func(tx *sql.Tx, anime Anime) error {
