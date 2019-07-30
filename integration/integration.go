@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/HDIOES/cpa-backend/util"
+	"github.com/HDIOES/cpa-backend/rest/util"
 )
 
 var NDD = errors.New("Database does not contains rows with processed = false") //'No database data' error
@@ -20,18 +20,30 @@ type ShikimoriJob struct {
 	Config *util.Configuration
 }
 
+//Run function
 func (sj *ShikimoriJob) Run() {
+	defer log.Println("Job has been ended")
 	client := &http.Client{}
 	//at start we need to load studios and genres
-	sj.ProcessStudios(client)
+	if processStudioErr := sj.ProcessStudios(client); processStudioErr != nil {
+		log.Print("Studios processing error", processStudioErr)
+		return
+	}
 	time.Sleep(1000 * time.Millisecond)
-	sj.ProcessGenres(client)
+	if processGenresErr := sj.ProcessGenres(client); processGenresErr != nil {
+		log.Print("Genres processing error", processGenresErr)
+		return
+	}
 	time.Sleep(1000 * time.Millisecond)
 	//then we have to load anime list
 	animes := &[]Anime{}
 	var page int64 = 1
 	for len(*animes) == 50 || page == 1 {
-		animes = sj.ProcessAnimePatch(page, client)
+		animesPatch, animesErr := sj.ProcessAnimePatch(page, client)
+		if animesErr != nil {
+			log.Print("Error anime patch processing", animesErr)
+		}
+		animes = animesPatch
 		page++
 		time.Sleep(1000 * time.Millisecond)
 	}
@@ -48,9 +60,9 @@ func (sj *ShikimoriJob) Run() {
 		}
 		time.Sleep(1000 * time.Millisecond)
 	}
-	log.Println("Job has been ended")
 }
 
+//GetNotProcessedExternalAnimeIds function
 func (sj *ShikimoriJob) GetNotProcessedExternalAnimeIds() (externalAnimeIDs *[]string, err error) {
 	getAnimeIdsRows, getAnimeIdsErr := sj.Db.Query("SELECT external_id FROM anime WHERE processed = false")
 	if getAnimeIdsErr != nil {
@@ -68,40 +80,26 @@ func (sj *ShikimoriJob) GetNotProcessedExternalAnimeIds() (externalAnimeIDs *[]s
 }
 
 //ProcessOneAnime function
-func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) (err error) {
+func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) error {
 	tx, txErr := sj.Db.Begin()
 	if txErr != nil {
-		log.Println("Transaction start failed: ", txErr)
-		err = txErr
-		return
+		return rollbackTransaction(tx, txErr)
 	}
-	defer func(tx *sql.Tx) {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}(tx)
-
 	log.Println("Now we will process anime with external_id = " + eID)
 	resp, getAnimeByIDErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriAnimeSearchURL + "/" + eID)
 	if getAnimeByIDErr != nil {
-		log.Println("Error during getting anime by id: ", getAnimeByIDErr)
-		err = getAnimeByIDErr
-		panic(getAnimeByIDErr)
+		return rollbackTransaction(tx, getAnimeByIDErr)
 	}
 	defer resp.Body.Close()
 	anime := &Anime{}
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
 	if readStudiosErr != nil {
-		log.Println("Error during reading studios: ", readStudiosErr)
-		err = readStudiosErr
-		panic(readStudiosErr)
+		return rollbackTransaction(tx, readStudiosErr)
 	}
 	log.Println("Response body: ", string(body))
 	parseError := json.Unmarshal(body, anime)
 	if parseError != nil {
-		log.Println("Error during parsing anime: ", parseError)
-		err = parseError
-		panic(readStudiosErr)
+		return rollbackTransaction(tx, parseError)
 	}
 	//then we need to update row in database
 	var score *float64
@@ -115,9 +113,7 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) (err er
 	_, execTxErr := tx.Exec("UPDATE anime SET score = $1, duration = $2, rating = $3, franchase = $4, processed = true, lastmodifytime = now() WHERE external_id = $5",
 		score, anime.Duration, anime.Rating, anime.Franchise, eID)
 	if execTxErr != nil {
-		log.Println("Query cannot be executed: ", execTxErr)
-		err = execTxErr
-		panic(execTxErr)
+		return rollbackTransaction(tx, execTxErr)
 	}
 	//and now let go to set genre for anime
 	for _, g := range *(anime.Genres) {
@@ -129,9 +125,7 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) (err er
 			strconv.FormatInt(*(anime.ID), 10),
 			strconv.FormatInt(*(g.ID), 10))
 		if findGenreErr != nil {
-			log.Println("Query cannot be executed: ", findGenreErr)
-			err = findGenreErr
-			panic(findGenreErr)
+			return rollbackTransaction(tx, findGenreErr)
 		}
 		if !animeGenreRows.Next() {
 			animeGenreRows.Close()
@@ -141,9 +135,7 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) (err er
 				strconv.FormatInt(*(anime.ID), 10),
 				strconv.FormatInt(*(g.ID), 10))
 			if insertNewGenreForAnime != nil {
-				log.Println("Query cannot be executed: ", insertNewGenreForAnime)
-				err = insertNewGenreForAnime
-				panic(insertNewGenreForAnime)
+				return rollbackTransaction(tx, insertNewGenreForAnime)
 			}
 		} else {
 			animeGenreRows.Close()
@@ -156,9 +148,7 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) (err er
 			strconv.FormatInt(*(anime.ID), 10),
 			strconv.FormatInt(*(s.ID), 10))
 		if findStudioErr != nil {
-			log.Println("Query cannot be executed: ", findStudioErr)
-			err = findStudioErr
-			panic(findStudioErr)
+			return rollbackTransaction(tx, findStudioErr)
 		}
 		if !animeStudioRows.Next() {
 			animeStudioRows.Close()
@@ -167,9 +157,7 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) (err er
 				strconv.FormatInt(*(anime.ID), 10),
 				strconv.FormatInt(*(s.ID), 10))
 			if insertNewStudioForAnime != nil {
-				log.Println("Query cannot be executed: ", insertNewStudioForAnime)
-				err = insertNewStudioForAnime
-				panic(insertNewStudioForAnime)
+				return rollbackTransaction(tx, insertNewStudioForAnime)
 			}
 		} else {
 			animeStudioRows.Close()
@@ -177,48 +165,36 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) (err er
 	}
 
 	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		log.Println("Transaction cannot be commited: ", txCommitErr)
-		err = txCommitErr
-		panic(txCommitErr)
+		return rollbackTransaction(tx, txCommitErr)
 	}
 	log.Println("Anime has been processed")
-	return
+	return nil
 }
 
 //ProcessGenres function
-func (sj *ShikimoriJob) ProcessGenres(client *http.Client) {
+func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 	tx, txErr := sj.Db.Begin()
 	if txErr != nil {
-		log.Println("Transaction start failed: ", txErr)
-		return
+		return rollbackTransaction(tx, txErr)
 	}
-	defer func(tx *sql.Tx) {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}(tx)
 	genres := &[]Genre{}
 	resp, getGenresErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriGenreURL)
 	if getGenresErr != nil {
-		log.Println("Error during getting genres: ", getGenresErr)
-		panic(getGenresErr)
+		return rollbackTransaction(tx, getGenresErr)
 	}
 	defer resp.Body.Close()
 	body, readGenresErr := ioutil.ReadAll(resp.Body)
 	if readGenresErr != nil {
-		log.Println("Error during reading genres: ", readGenresErr)
-		panic(readGenresErr)
+		return rollbackTransaction(tx, readGenresErr)
 	}
 	parseGenresError := json.Unmarshal(body, genres)
 	if parseGenresError != nil {
-		log.Println("Error during parsing genres: ", parseGenresError)
-		panic(parseGenresError)
+		return rollbackTransaction(tx, parseGenresError)
 	}
 	for i := 0; i < len(*genres); i++ {
 		rows, txExecSelectErr := tx.Query("SELECT external_id FROM genre WHERE external_id = $1", (*genres)[i].ID)
 		if txExecSelectErr != nil {
-			log.Println("Query cannot be executed: ", txExecSelectErr)
-			panic(parseGenresError)
+			return rollbackTransaction(tx, txExecSelectErr)
 		}
 		if !rows.Next() {
 			_, txExecErr := tx.Exec("INSERT INTO genre (external_id, genre_name, russian, kind) "+
@@ -228,54 +204,43 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) {
 				(*genres)[i].Russian,
 				(*genres)[i].Kind)
 			if txExecErr != nil {
-				log.Println("Query cannot be executed: ", txExecErr)
 				rows.Close()
-				panic(txExecErr)
+				return rollbackTransaction(tx, txExecErr)
 			}
 		}
 		rows.Close()
 	}
 	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		log.Println("Transaction cannot be commited: ", txCommitErr)
-		panic(txCommitErr)
+		return rollbackTransaction(tx, txCommitErr)
 	}
 	log.Println("Genres have been processed")
+	return nil
 }
 
 //ProcessStudios function
-func (sj *ShikimoriJob) ProcessStudios(client *http.Client) {
+func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
+	studios := &[]Studio{}
 	tx, txErr := sj.Db.Begin()
 	if txErr != nil {
-		log.Println("Transaction start failed: ", txErr)
-		return
+		return rollbackTransaction(tx, txErr)
 	}
-	defer func(tx *sql.Tx) {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}(tx)
-	studios := &[]Studio{}
 	resp, getStudioErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriStudioURL)
 	if getStudioErr != nil {
-		log.Println("Error during getting studios: ", getStudioErr)
-		panic(getStudioErr)
+		return rollbackTransaction(tx, getStudioErr)
 	}
 	defer resp.Body.Close()
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
 	if readStudiosErr != nil {
-		log.Println("Error during reading studios: ", readStudiosErr)
-		panic(readStudiosErr)
+		return rollbackTransaction(tx, readStudiosErr)
 	}
 	parseError := json.Unmarshal(body, studios)
 	if parseError != nil {
-		log.Println("Error during parsing studios: ", parseError)
-		panic(readStudiosErr)
+		return rollbackTransaction(tx, parseError)
 	}
 	for i := 0; i < len(*studios); i++ {
 		rows, txExecSelectErr := tx.Query("SELECT external_id FROM studio WHERE external_id = $1", (*studios)[i].ID)
 		if txExecSelectErr != nil {
-			log.Println("Query cannot be executed: ", txExecSelectErr)
-			panic(readStudiosErr)
+			return rollbackTransaction(tx, txExecSelectErr)
 		}
 		if !rows.Next() {
 			_, txExecErr := tx.Exec("INSERT INTO studio (external_id, studio_name, filtered_studio_name, is_real, image_url) "+
@@ -286,56 +251,44 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) {
 				(*studios)[i].Real,
 				(*studios)[i].Image)
 			if txExecErr != nil {
-				log.Println("Query cannot be executed: ", txExecErr)
 				rows.Close()
-				panic(txExecErr)
+				return rollbackTransaction(tx, txExecErr)
 			}
 		}
 		rows.Close()
 	}
 	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		log.Println("Transaction cannot be commited: ", txCommitErr)
-		panic(txCommitErr)
+		return rollbackTransaction(tx, txCommitErr)
 	}
 	log.Println("Studios have been processed")
+	return nil
 }
 
 //ProcessAnimePatch function
-func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]Anime {
+func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) (*[]Anime, error) {
 	animes := &[]Anime{}
 	tx, txErr := sj.Db.Begin()
 	if txErr != nil {
-		log.Println("Transaction start failed: ", txErr)
-		return animes
+		return nil, rollbackTransaction(tx, txErr)
 	}
-	defer func(tx *sql.Tx) {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}(tx)
-
 	resp, animesGetErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriAnimeSearchURL + "?page=" + strconv.FormatInt(page, 10) + "&limit=50")
 	if animesGetErr != nil {
-		log.Println("Error during getting animes: ", animesGetErr)
-		panic(animesGetErr)
+		return nil, rollbackTransaction(tx, animesGetErr)
 	}
 	defer resp.Body.Close()
 	body, readAnimesErr := ioutil.ReadAll(resp.Body)
 	if readAnimesErr != nil {
-		log.Println("Error during reading body: ", readAnimesErr)
-		panic(readAnimesErr)
+		return nil, rollbackTransaction(tx, readAnimesErr)
 	}
 	parseAnimesError := json.Unmarshal(body, animes)
 	if parseAnimesError != nil {
-		log.Println("Error parsing of animes: ", parseAnimesError)
-		panic(parseAnimesError)
+		return nil, rollbackTransaction(tx, parseAnimesError)
 	}
 	//function for inserting anime
-	insertAnimeFunc := func(tx *sql.Tx, anime Anime) {
+	insertAnimeFunc := func(tx *sql.Tx, anime Anime) error {
 		rows, txExecSelectErr := tx.Query("SELECT external_id FROM ANIME WHERE external_id = $1", anime.ID)
 		if txExecSelectErr != nil {
-			log.Println("Query cannot be executed: ", txExecSelectErr)
-			panic(txExecSelectErr)
+			return txExecSelectErr
 		}
 		defer rows.Close()
 		if !rows.Next() {
@@ -362,20 +315,28 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) *[]An
 				releasedOn,
 				posterURL)
 			if txExecErr != nil {
-				log.Println("Query cannot be executed: ", txExecErr)
-				panic(txExecErr)
+				return txExecErr
 			}
 		}
+		return nil
 	}
 	for i := 0; i < len(*animes); i++ {
-		insertAnimeFunc(tx, (*animes)[i])
+		if err := insertAnimeFunc(tx, (*animes)[i]); err != nil {
+			return nil, rollbackTransaction(tx, err)
+		}
 	}
 	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		log.Println("Transaction cannot be commited: ", txCommitErr)
-		panic(txCommitErr)
+		return nil, rollbackTransaction(tx, txCommitErr)
 	}
 	log.Println("Page with number " + strconv.FormatInt(page, 10) + " has been processed")
-	return animes
+	return animes, nil
+}
+
+func rollbackTransaction(tx *sql.Tx, err error) error {
+	if rollbackErr := tx.Rollback(); err != nil {
+		return rollbackErr
+	}
+	return err
 }
 
 //Anime struct
