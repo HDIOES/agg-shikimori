@@ -139,6 +139,22 @@ func insertGenreToDatabase(t *testing.T, externalID, genreName, russian, kind st
 	return nil
 }
 
+func insertNewToDatabase(t *testing.T, id int64, name string, body string) error {
+	tx, beginErr := db.Begin()
+	if beginErr != nil {
+		return beginErr
+	}
+	_, txErr :=
+		tx.Exec("INSERT INTO new (id, name, body) VALUES ($1, $2, $3)", id, name, body)
+	if txErr != nil {
+		return rollbackTransaction(tx, txErr)
+	}
+	if commitErr := tx.Commit(); commitErr != nil {
+		return rollbackTransaction(tx, commitErr)
+	}
+	return nil
+}
+
 func rollbackTransaction(tx *sql.Tx, err error) error {
 	if rollbackErr := tx.Rollback(); rollbackErr != nil {
 		return rollbackErr

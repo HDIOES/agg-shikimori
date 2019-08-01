@@ -21,6 +21,12 @@ func ConfigureRouter(db *sql.DB, configuration *util.Configuration) *mux.Router 
 		Methods("GET")
 	router.Handle("/api/studios/search", CreateStudioHandler(db)).
 		Methods("GET")
+	router.Handle("/api/news", CreateCreateNewHandler(db)).
+		Methods("POST")
+	router.Handle("/api/news", CreateFindNewHandler(db)).
+		Methods("GET")
+	router.Handle("/api/news", nil).
+		Methods("DELETE")
 	http.Handle("/", router)
 	return router
 }
