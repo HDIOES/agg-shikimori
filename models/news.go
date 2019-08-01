@@ -12,7 +12,7 @@ type NewDAO struct {
 
 //Find function
 func (ndao *NewDAO) Find(id int64) (*NewDTO, error) {
-	stmt, prepareStmtErr := ndao.Db.Prepare("SELECT (id, name, body) FROM new WHERE id = $1")
+	stmt, prepareStmtErr := ndao.Db.Prepare("SELECT id, name, body FROM new WHERE id = $1")
 	if prepareStmtErr != nil {
 		return nil, prepareStmtErr
 	}
@@ -24,13 +24,13 @@ func (ndao *NewDAO) Find(id int64) (*NewDTO, error) {
 	defer result.Close()
 	newDTO := &NewDTO{}
 	if result.Next() {
-		var id sql.NullInt64
-		var name sql.NullString
-		var body sql.NullString
-		result.Scan(&id, &name, &body)
-		newDTO.ID = id.Int64
-		newDTO.Name = name.String
-		newDTO.Body = body.String
+		var sqlID sql.NullInt64
+		var sqlName sql.NullString
+		var sqlBody sql.NullString
+		result.Scan(&sqlID, &sqlName, &sqlBody)
+		newDTO.ID = sqlID.Int64
+		newDTO.Name = sqlName.String
+		newDTO.Body = sqlBody.String
 	} else {
 		return nil, errors.New("New not found")
 	}
