@@ -20,6 +20,7 @@ import (
 	"github.com/gorilla/handlers"
 
 	"github.com/HDIOES/cpa-backend/integration"
+	"github.com/HDIOES/cpa-backend/rest"
 	"github.com/HDIOES/cpa-backend/rest/util"
 )
 
@@ -73,7 +74,7 @@ func main() {
 	if pingErr != nil {
 		panic(pingErr)
 	}
-	ConfigureRouter(db, configuration)
+	router := rest.ConfigureRouter(db, configuration)
 	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
