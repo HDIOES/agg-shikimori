@@ -94,12 +94,11 @@ func (ndao *NewDAO) Delete(id int64) error {
 	if prepareStmtErr != nil {
 		return rollbackTransaction(tx, prepareStmtErr)
 	}
+	defer stmt.Close()
 	_, stmtErr := stmt.Exec(id)
 	if stmtErr != nil {
-		stmt.Close()
 		return rollbackTransaction(tx, stmtErr)
 	}
-	stmt.Close()
 	if commitErr := tx.Commit(); commitErr != nil {
 		return rollbackTransaction(tx, commitErr)
 	}
