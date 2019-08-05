@@ -2,7 +2,6 @@ package rest
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"math/rand"
 	"net/http"
@@ -10,19 +9,20 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/HDIOES/cpa-backend/models"
 	"github.com/HDIOES/cpa-backend/rest/util"
 )
 
 //CreateRandomAnimeHandler function receive handler for rest-method /animes/random
 func CreateRandomAnimeHandler(db *sql.DB, config *util.Configuration) http.Handler {
-	animeDao := AnimeDao{Db: db, Config: config}
+	animeDao := models.AnimeDAO{Db: db}
 	randomAnimeHandler := &RandomAnimeHandler{Dao: &animeDao}
 	return randomAnimeHandler
 }
 
 //RandomAnimeHandler struct
 type RandomAnimeHandler struct {
-	Dao *AnimeDao
+	Dao *models.AnimeDAO
 }
 
 func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,7 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if parseErr != nil {
 		log.Println(parseErr)
 	}
-	animeSQLBuilder := AnimeQueryBuilder{}
+	animeSQLBuilder := models.AnimeQueryBuilder{}
 	if status, statusOk := vars["status"]; statusOk {
 		animeSQLBuilder.SetStatus(status[0])
 	}
@@ -44,16 +44,16 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		animeSQLBuilder.SetOrder(order[0])
 	}
 	if score, scoreOk := vars["score"]; scoreOk {
-		if scoreInt64, parseErr := strconv.ParseInt(score[0], 10, 32); parseErr != nil {
+		scoreInt64, parseErr := strconv.ParseInt(score[0], 10, 32)
+		if parseErr != nil {
 			HandleErr(parseErr, w, 400, "Score not valid")
 			return
-		} else {
-			animeSQLBuilder.SetScore(int32(scoreInt64))
 		}
+		animeSQLBuilder.SetScore(int32(scoreInt64))
 	}
 	if genre, genreOk := vars["genre"]; genreOk {
 		for _, genreID := range strings.Split(genre[0], ",") {
-			animeSQLBuilder.AddGenreId(genreID)
+			animeSQLBuilder.AddGenreID(genreID)
 		}
 	}
 	if studio, studioOk := vars["studio"]; studioOk {
@@ -72,27 +72,27 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	if ids, idsOk := vars["ids"]; idsOk {
 		for _, id := range strings.Split(ids[0], ",") {
-			animeSQLBuilder.AddId(id)
+			animeSQLBuilder.AddID(id)
 		}
 	}
 	if excludeIds, excludeIdsOk := vars["exclude_ids"]; excludeIdsOk {
 		for _, id := range strings.Split(excludeIds[0], ",") {
-			animeSQLBuilder.AddExcludeId(id)
+			animeSQLBuilder.AddExcludeID(id)
 		}
 	}
 	animeSQLBuilder.SetCountOnly(true)
 	animeSQLBuilder.SetRowNumber(0)
-	if countOfAnimes, err := rah.Dao.GetCount(animeSQLBuilder); err != nil {
-		HandleErr(parseErr, w, 500, "Internal error")
+	countOfAnimes, err := rah.Dao.GetCount(animeSQLBuilder)
+	if err != nil {
+		HandleErr(parseErr, w, 400, "Internal error")
 		return
-	} else {
-		animeSQLBuilder.SetCountOnly(false)
-		animeSQLBuilder.SetRowNumber(rand.Int63n(countOfAnimes + 1))
 	}
-	if animeRO, err := rah.Dao.GetRandomAnime(animeSQLBuilder); err != nil {
-		HandleErr(parseErr, w, 500, "Internal error")
+	animeSQLBuilder.SetCountOnly(false)
+	animeSQLBuilder.SetRowNumber(rand.Int63n(countOfAnimes + 1))
+	animeRO, err := rah.Dao.GetRandomAnime(animeSQLBuilder)
+	if err != nil {
+		HandleErr(parseErr, w, 400, "Internal error")
 		return
-	} else {
-		json.NewEncoder(w).Encode(animeRO)
 	}
+	ReturnResponseAsJSON(w, animeRO, 200)
 }

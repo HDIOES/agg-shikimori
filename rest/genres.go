@@ -2,21 +2,22 @@ package rest
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
+
+	"github.com/HDIOES/cpa-backend/models"
 )
 
 func CreateGenreHandler(db *sql.DB) http.Handler {
-	genreHandler := &GenreHandler{Db: db}
+	dao := models.GenreDAO{Db: db}
+	genreHandler := &GenreHandler{GenreDao: &dao}
 	return genreHandler
 }
 
 type GenreHandler struct {
-	Db *sql.DB
+	GenreDao *models.GenreDAO
 }
 
 func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -24,86 +25,44 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if parseErr != nil {
 		log.Println(parseErr)
 	}
-	genreSQLBuilder := GenreQueryBuilder{}
+	genreSQLBuilder := models.GenreQueryBuilder{}
 	if limit, limitOk := vars["limit"]; limitOk {
 		if limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32); parseErr != nil {
-			//TODO error processing
+			HandleErr(parseErr, w, 400, "Not valid limit")
+			return
 		} else {
 			genreSQLBuilder.SetOffset(int32(limitInt64))
 		}
 	}
 	if offset, offsetOk := vars["offset"]; offsetOk {
 		if offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32); parseErr != nil {
-			//TODO error processing
+			HandleErr(parseErr, w, 400, "Not valid offset")
+			return
 		} else {
 			genreSQLBuilder.SetOffset(int32(offsetInt64))
 		}
 	}
-	sqlQuery, args := genreSQLBuilder.Build()
-	rows, rowsErr := g.Db.Query(sqlQuery, args...)
-	if rowsErr != nil {
-		log.Println(rowsErr)
+	genreDtos, findByFilterErr := g.GenreDao.FindByFilter(genreSQLBuilder)
+	if findByFilterErr != nil {
+		HandleErr(findByFilterErr, w, 400, "Error")
+		return
 	}
-	defer rows.Close()
 	genres := []GenreRo{}
-	for rows.Next() {
+	for _, genreDto := range genreDtos {
 		genreRo := GenreRo{}
-		var id sql.NullString
-		var name sql.NullString
-		var russian sql.NullString
-		var kind sql.NullString
-		rows.Scan(&id, &name, &russian, &kind)
-		genreRo.ID = &id.String
-		genreRo.Name = &name.String
-		genreRo.Russian = &russian.String
-		genreRo.Kind = &kind.String
+		genreRo.ID = genreDto.ExternalID
+		genreRo.Name = genreDto.Name
+		genreRo.Russian = genreDto.Russian
+		genreRo.Kind = genreDto.Kind
 		genres = append(genres, genreRo)
 	}
-	json.NewEncoder(w).Encode(genres)
+	ReturnResponseAsJSON(w, genres, 200)
 }
 
-//GenreQueryBuilder struct
-type GenreQueryBuilder struct {
-	Limit  int32
-	Offset int32
-}
-
-//Build func
-func (gqb *GenreQueryBuilder) Build() (string, []interface{}) {
-	query := strings.Builder{}
-	args := make([]interface{}, 0)
-	query.WriteString("SELECT external_id, genre_name, russian, kind FROM genre WHERE 1=1")
-	countOfParameter := 0
-	if gqb.Limit > 0 {
-		countOfParameter++
-		args = append(args, gqb.Limit)
-		query.WriteString(" LIMIT $")
-		query.WriteString(strconv.Itoa(countOfParameter))
-	} else {
-		query.WriteString(" LIMIT 50")
-	}
-	if gqb.Offset > 0 {
-		countOfParameter++
-		args = append(args, gqb.Offset)
-		query.WriteString(" OFFSET $")
-		query.WriteString(strconv.Itoa(countOfParameter))
-	}
-	return query.String(), args
-}
-
-//SetLimit func
-func (gqb *GenreQueryBuilder) SetLimit(limit int32) {
-	gqb.Limit = limit
-}
-
-//SetOffset func
-func (gqb *GenreQueryBuilder) SetOffset(offset int32) {
-	gqb.Offset = offset
-}
-
+//GenreRo struct
 type GenreRo struct {
-	ID      *string `json:"id"`
-	Name    *string `json:"name"`
-	Russian *string `json:"russian"`
-	Kind    *string `json:"kind"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Russian string `json:"russian"`
+	Kind    string `json:"kind"`
 }

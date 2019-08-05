@@ -14,7 +14,7 @@ import (
 func TestShikimoriJobSuccess(t *testing.T) {
 	clearDb(db)
 	defer gock.Off()
-	shikimoriJob := &integration.ShikimoriJob{Db: db, Config: configuration}
+	shikimoriJob := integration.CreateShikimoriJob(db, configuration)
 
 	animesData, err := ioutil.ReadFile("mock/shikimori_animes_success.json")
 	if err != nil {

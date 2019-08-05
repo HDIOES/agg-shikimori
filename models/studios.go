@@ -12,6 +12,52 @@ type StudioDAO struct {
 	Db *sql.DB
 }
 
+//FindByID function
+func (dao *StudioDAO) FindByID(id int64) (*StudioDTO, error) {
+	stmt, stmtErr := dao.Db.Prepare("SELECT ")
+	if stmtErr != nil {
+		return nil, stmtErr
+	}
+	defer stmt.Close()
+	result, resultErr := stmt.Query(id)
+	if resultErr != nil {
+		return nil, resultErr
+	}
+	defer result.Close()
+	if result.Next() {
+		dto := StudioDTO{}
+		var ID sql.NullInt64
+		var externalID sql.NullString
+		var name sql.NullString
+		var filteredName sql.NullString
+		var isReal sql.NullBool
+		var imageURL sql.NullString
+		result.Scan(&ID, &externalID, &name, &filteredName, &isReal, &imageURL)
+		dto.ID = ID.Int64
+		dto.ExternalID = externalID.String
+		dto.Name = name.String
+		dto.FilteredStudioName = filteredName.String
+		dto.IsReal = isReal.Bool
+		dto.ImageURL = imageURL.String
+		return &dto, nil
+	}
+	return nil, errors.New("Studio not found")
+}
+
+//FindByExternalID function
+func (dao *StudioDAO) FindByExternalID(externalID string) (*StudioDTO, error) {
+	sqlBuilder := StudioQueryBuilder{}
+	sqlBuilder.SetExternalID(externalID)
+	studios, err := dao.FindByFilter(sqlBuilder)
+	if err != nil {
+		return nil, err
+	}
+	if len(studios) > 0 {
+		return &studios[0], nil
+	}
+	return nil, errors.New("Studio not found")
+}
+
 //FindByFilter function
 func (dao *StudioDAO) FindByFilter(sqlBuilder StudioQueryBuilder) ([]StudioDTO, error) {
 	query, args := sqlBuilder.Build()
@@ -102,8 +148,9 @@ type StudioDTO struct {
 
 //StudioQueryBuilder struct
 type StudioQueryBuilder struct {
-	Limit  int32
-	Offset int32
+	Limit      int32
+	Offset     int32
+	ExternalID string
 }
 
 //Build func
@@ -112,6 +159,12 @@ func (sqb *StudioQueryBuilder) Build() (string, []interface{}) {
 	args := make([]interface{}, 0)
 	query.WriteString("SELECT external_id, studio_name, filtered_studio_name, kind FROM studio WHERE 1=1")
 	countOfParameter := 0
+	if len(sqb.ExternalID) > 0 {
+		countOfParameter++
+		args = append(args, sqb.ExternalID)
+		query.WriteString(" AND $")
+		query.WriteString(strconv.Itoa(countOfParameter))
+	}
 	if sqb.Limit > 0 {
 		countOfParameter++
 		args = append(args, sqb.Limit)
@@ -137,4 +190,9 @@ func (sqb *StudioQueryBuilder) SetLimit(limit int32) {
 //SetOffset func
 func (sqb *StudioQueryBuilder) SetOffset(offset int32) {
 	sqb.Offset = offset
+}
+
+//SetExternalID func
+func (sqb *StudioQueryBuilder) SetExternalID(externalID string) {
+	sqb.ExternalID = externalID
 }

@@ -8,16 +8,32 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/HDIOES/cpa-backend/models"
 
 	"github.com/HDIOES/cpa-backend/rest/util"
 )
 
 var NDD = errors.New("Database does not contains rows with processed = false") //'No database data' error
 
+//ShikimoriJob struct
 type ShikimoriJob struct {
-	Db     *sql.DB
-	Config *util.Configuration
+	animeDao  *models.AnimeDAO
+	genreDao  *models.GenreDAO
+	studioDao *models.StudioDAO
+	Config    *util.Configuration
+}
+
+//CreateShikimoriJob function
+func CreateShikimoriJob(db *sql.DB, config *util.Configuration) *ShikimoriJob {
+	return &ShikimoriJob{
+		animeDao:  &models.AnimeDAO{Db: db},
+		genreDao:  &models.GenreDAO{Db: db},
+		studioDao: &models.StudioDAO{Db: db},
+		Config:    config,
+	}
 }
 
 //Run function
@@ -36,9 +52,9 @@ func (sj *ShikimoriJob) Run() {
 	}
 	time.Sleep(1000 * time.Millisecond)
 	//then we have to load anime list
-	animes := &[]Anime{}
+	animes := []Anime{}
 	var page int64 = 1
-	for len(*animes) == 50 || page == 1 {
+	for len(animes) == 50 || page == 1 {
 		animesPatch, animesErr := sj.ProcessAnimePatch(page, client)
 		if animesErr != nil {
 			log.Print("Error anime patch processing", animesErr)
@@ -48,13 +64,13 @@ func (sj *ShikimoriJob) Run() {
 		time.Sleep(1000 * time.Millisecond)
 	}
 	//then we need to run long loading of animes by call url '/api/animes/:id'
-	var externalAnimeIDs, err = sj.GetNotProcessedExternalAnimeIds()
+	var animesDtos, err = sj.GetNotProcessedExternalAnimes()
 	if err != nil {
 		log.Println("Error getting of anime ids: ", err)
 		return
 	}
-	for _, eID := range *externalAnimeIDs {
-		processOneAmineErr := sj.ProcessOneAnime(client, eID)
+	for _, animeDto := range animesDtos {
+		processOneAmineErr := sj.ProcessOneAnime(client, animeDto)
 		if processOneAmineErr != nil {
 			log.Println("Error getting of anime: ", processOneAmineErr)
 		}
@@ -62,110 +78,59 @@ func (sj *ShikimoriJob) Run() {
 	}
 }
 
-//GetNotProcessedExternalAnimeIds function
-func (sj *ShikimoriJob) GetNotProcessedExternalAnimeIds() (externalAnimeIDs *[]string, err error) {
-	getAnimeIdsRows, getAnimeIdsErr := sj.Db.Query("SELECT external_id FROM anime WHERE processed = false")
-	if getAnimeIdsErr != nil {
-		log.Println("Error getting of anime ids: ", getAnimeIdsErr)
-		return nil, getAnimeIdsErr
+//GetNotProcessedExternalAnimes function
+func (sj *ShikimoriJob) GetNotProcessedExternalAnimes() ([]models.AnimeDTO, error) {
+	sqlBuilder := models.AnimeQueryBuilder{}
+	sqlBuilder.SetProcessed(false)
+	animeDtos, getAnimeDtosErr := sj.animeDao.FindByFilter(sqlBuilder)
+	if getAnimeDtosErr != nil {
+		return nil, getAnimeDtosErr
 	}
-	defer getAnimeIdsRows.Close()
-	var ids []string
-	var externlalID sql.NullString
-	for getAnimeIdsRows.Next() {
-		getAnimeIdsRows.Scan(&externlalID)
-		ids = append(ids, externlalID.String)
-	}
-	return &ids, nil
+	return animeDtos, nil
 }
 
 //ProcessOneAnime function
-func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) error {
-	tx, txErr := sj.Db.Begin()
-	if txErr != nil {
-		return rollbackTransaction(tx, txErr)
-	}
-	log.Println("Now we will process anime with external_id = " + eID)
-	resp, getAnimeByIDErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriAnimeSearchURL + "/" + eID)
+func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, animeDto models.AnimeDTO) error {
+	log.Println("Now we will process anime with external_id = " + animeDto.ExternalID)
+	resp, getAnimeByIDErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriAnimeSearchURL + "/" + animeDto.ExternalID)
 	if getAnimeByIDErr != nil {
-		return rollbackTransaction(tx, getAnimeByIDErr)
+		return getAnimeByIDErr
 	}
 	defer resp.Body.Close()
 	anime := &Anime{}
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
 	if readStudiosErr != nil {
-		return rollbackTransaction(tx, readStudiosErr)
+		return readStudiosErr
 	}
 	log.Println("Response body: ", string(body))
 	parseError := json.Unmarshal(body, anime)
 	if parseError != nil {
-		return rollbackTransaction(tx, parseError)
+		return parseError
 	}
 	//then we need to update row in database
-	var score *float64
-	floatScore, parseScoreErr := strconv.ParseFloat(*(anime.Score), 32)
-	if parseScoreErr != nil {
-		log.Println("Error during parsing score: ", parseScoreErr)
-		score = nil
-	} else {
-		score = &floatScore
-	}
-	_, execTxErr := tx.Exec("UPDATE anime SET score = $1, duration = $2, rating = $3, franchase = $4, processed = true, lastmodifytime = now() WHERE external_id = $5",
-		score, anime.Duration, anime.Rating, anime.Franchise, eID)
-	if execTxErr != nil {
-		return rollbackTransaction(tx, execTxErr)
+	updateErr := sj.animeDao.Update(animeDto)
+	if updateErr != nil {
+		return updateErr
 	}
 	//and now let go to set genre for anime
-	for _, g := range *(anime.Genres) {
-		animeGenreRows, findGenreErr := tx.Query("SELECT anime_genre.anime_id, anime_genre.genre_id "+
-			"FROM anime_genre "+
-			"JOIN anime ON anime.id = anime_genre.anime_id "+
-			"JOIN genre ON genre.id = anime_genre.genre_id "+
-			"WHERE anime.external_id = $1 AND genre.external_id = $2",
-			strconv.FormatInt(*(anime.ID), 10),
-			strconv.FormatInt(*(g.ID), 10))
-		if findGenreErr != nil {
-			return rollbackTransaction(tx, findGenreErr)
+	for _, g := range *anime.Genres {
+		genreDto, genreDtoErr := sj.genreDao.FindByExternalID(strconv.FormatInt(*g.ID, 10))
+		if genreDtoErr != nil {
+			return genreDtoErr
 		}
-		if !animeGenreRows.Next() {
-			animeGenreRows.Close()
-			//now we need insert missing genre
-			_, insertNewGenreForAnime := tx.Exec("INSERT INTO anime_genre (anime_id, genre_id) "+
-				"SELECT anime.id, genre.id FROM anime JOIN genre ON anime.external_id = $1 AND genre.external_id = $2",
-				strconv.FormatInt(*(anime.ID), 10),
-				strconv.FormatInt(*(g.ID), 10))
-			if insertNewGenreForAnime != nil {
-				return rollbackTransaction(tx, insertNewGenreForAnime)
-			}
-		} else {
-			animeGenreRows.Close()
+		if linkErr := sj.animeDao.LinkAnimeAndGenre(animeDto.ID, genreDto.ID); linkErr != nil {
+			return linkErr
 		}
 	}
 	//let go to set studio for anime
-	for _, s := range *(anime.Studios) {
-		animeStudioRows, findStudioErr := tx.Query("SELECT anime_studio.anime_id, anime_studio.studio_id FROM anime_studio "+
-			"join anime on anime.id = anime_studio.anime_id join studio on studio.id = anime_studio.studio_id WHERE anime.external_id = $1 AND studio.external_id = $2",
-			strconv.FormatInt(*(anime.ID), 10),
-			strconv.FormatInt(*(s.ID), 10))
-		if findStudioErr != nil {
-			return rollbackTransaction(tx, findStudioErr)
+	for _, s := range *anime.Studios {
+		studioDto, studioDtoErr := sj.studioDao.FindByExternalID(strconv.FormatInt(*s.ID, 10))
+		if studioDtoErr != nil {
+			return studioDtoErr
 		}
-		if !animeStudioRows.Next() {
-			animeStudioRows.Close()
-			//now we need insert missing studio
-			_, insertNewStudioForAnime := tx.Exec("INSERT INTO anime_studio SELECT anime.id, studio.id FROM anime JOIN studio ON anime.external_id = $1 AND studio.external_id = $2",
-				strconv.FormatInt(*(anime.ID), 10),
-				strconv.FormatInt(*(s.ID), 10))
-			if insertNewStudioForAnime != nil {
-				return rollbackTransaction(tx, insertNewStudioForAnime)
-			}
-		} else {
-			animeStudioRows.Close()
+		if linkErr := sj.animeDao.LinkAnimeAndStudio(animeDto.ID, studioDto.ID); linkErr != nil {
+			return linkErr
 		}
-	}
-
-	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		return rollbackTransaction(tx, txCommitErr)
 	}
 	log.Println("Anime has been processed")
 	return nil
@@ -173,45 +138,44 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, eID string) error {
 
 //ProcessGenres function
 func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
-	tx, txErr := sj.Db.Begin()
-	if txErr != nil {
-		return rollbackTransaction(tx, txErr)
-	}
-	genres := &[]Genre{}
+	genres := []Genre{}
 	resp, getGenresErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriGenreURL)
 	if getGenresErr != nil {
-		return rollbackTransaction(tx, getGenresErr)
+		return getGenresErr
 	}
 	defer resp.Body.Close()
 	body, readGenresErr := ioutil.ReadAll(resp.Body)
 	if readGenresErr != nil {
-		return rollbackTransaction(tx, readGenresErr)
+		return readGenresErr
 	}
 	parseGenresError := json.Unmarshal(body, genres)
 	if parseGenresError != nil {
-		return rollbackTransaction(tx, parseGenresError)
+		return parseGenresError
 	}
-	for i := 0; i < len(*genres); i++ {
-		rows, txExecSelectErr := tx.Query("SELECT external_id FROM genre WHERE external_id = $1", (*genres)[i].ID)
-		if txExecSelectErr != nil {
-			return rollbackTransaction(tx, txExecSelectErr)
+	for _, genre := range genres {
+		externalID := strconv.FormatInt(*genre.ID, 10)
+		genreDto, dtoErr := sj.genreDao.FindByExternalID(externalID)
+		genreNotFound := strings.Compare(dtoErr.Error(), "Genre not found") == 0
+		dto := models.GenreDTO{}
+		dto.ExternalID = externalID
+		dto.Name = *genre.Name
+		dto.Russian = *genre.Russian
+		dto.Kind = *genre.Kind
+		if dtoErr != nil {
+			return dtoErr
 		}
-		if !rows.Next() {
-			_, txExecErr := tx.Exec("INSERT INTO genre (external_id, genre_name, russian, kind) "+
-				"VALUES ($1, $2, $3, $4)",
-				(*genres)[i].ID,
-				(*genres)[i].Name,
-				(*genres)[i].Russian,
-				(*genres)[i].Kind)
-			if txExecErr != nil {
-				rows.Close()
-				return rollbackTransaction(tx, txExecErr)
+		if genreNotFound {
+			_, createErr := sj.genreDao.Create(dto)
+			if createErr != nil {
+				return createErr
+			}
+		} else {
+			dto.ID = genreDto.ID
+			updateErr := sj.genreDao.Update(dto)
+			if updateErr != nil {
+				return updateErr
 			}
 		}
-		rows.Close()
-	}
-	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		return rollbackTransaction(tx, txCommitErr)
 	}
 	log.Println("Genres have been processed")
 	return nil
@@ -219,114 +183,93 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 
 //ProcessStudios function
 func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
-	studios := &[]Studio{}
-	tx, txErr := sj.Db.Begin()
-	if txErr != nil {
-		return rollbackTransaction(tx, txErr)
-	}
+	studios := []Studio{}
 	resp, getStudioErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriStudioURL)
 	if getStudioErr != nil {
-		return rollbackTransaction(tx, getStudioErr)
+		return getStudioErr
 	}
 	defer resp.Body.Close()
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
 	if readStudiosErr != nil {
-		return rollbackTransaction(tx, readStudiosErr)
+		return readStudiosErr
 	}
 	parseError := json.Unmarshal(body, studios)
 	if parseError != nil {
-		return rollbackTransaction(tx, parseError)
+		return parseError
 	}
-	for i := 0; i < len(*studios); i++ {
-		rows, txExecSelectErr := tx.Query("SELECT external_id FROM studio WHERE external_id = $1", (*studios)[i].ID)
-		if txExecSelectErr != nil {
-			return rollbackTransaction(tx, txExecSelectErr)
+	for _, shikiStudio := range studios {
+		externalID := strconv.FormatInt(*shikiStudio.ID, 10)
+		studioDto, findErr := sj.studioDao.FindByExternalID(externalID)
+		if findErr != nil {
+			return findErr
 		}
-		if !rows.Next() {
-			_, txExecErr := tx.Exec("INSERT INTO studio (external_id, studio_name, filtered_studio_name, is_real, image_url) "+
-				"VALUES ($1, $2, $3, $4, $5)",
-				(*studios)[i].ID,
-				(*studios)[i].Name,
-				(*studios)[i].FilteredName,
-				(*studios)[i].Real,
-				(*studios)[i].Image)
-			if txExecErr != nil {
-				rows.Close()
-				return rollbackTransaction(tx, txExecErr)
+		studioNotFound := strings.Compare(findErr.Error(), "Studio not found") == 0
+		dto := models.StudioDTO{
+			ExternalID:         externalID,
+			Name:               *shikiStudio.Name,
+			FilteredStudioName: *shikiStudio.FilteredName,
+			IsReal:             *shikiStudio.Real,
+			ImageURL:           *shikiStudio.Image,
+		}
+		if studioNotFound {
+			if _, createErr := sj.studioDao.Create(dto); createErr != nil {
+				return createErr
+			}
+		} else {
+			dto.ID = studioDto.ID
+			if updateErr := sj.studioDao.Update(dto); updateErr != nil {
+				return updateErr
 			}
 		}
-		rows.Close()
-	}
-	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		return rollbackTransaction(tx, txCommitErr)
 	}
 	log.Println("Studios have been processed")
 	return nil
 }
 
 //ProcessAnimePatch function
-func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) (*[]Anime, error) {
-	animes := &[]Anime{}
-	tx, txErr := sj.Db.Begin()
-	if txErr != nil {
-		return nil, rollbackTransaction(tx, txErr)
-	}
+func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) ([]Anime, error) {
+	animes := []Anime{}
 	resp, animesGetErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriAnimeSearchURL + "?page=" + strconv.FormatInt(page, 10) + "&limit=50")
 	if animesGetErr != nil {
-		return nil, rollbackTransaction(tx, animesGetErr)
+		return nil, animesGetErr
 	}
 	defer resp.Body.Close()
 	body, readAnimesErr := ioutil.ReadAll(resp.Body)
 	if readAnimesErr != nil {
-		return nil, rollbackTransaction(tx, readAnimesErr)
+		return nil, readAnimesErr
 	}
 	parseAnimesError := json.Unmarshal(body, animes)
 	if parseAnimesError != nil {
-		return nil, rollbackTransaction(tx, parseAnimesError)
+		return nil, parseAnimesError
 	}
-	//function for inserting anime
-	insertAnimeFunc := func(tx *sql.Tx, anime Anime) error {
-		rows, txExecSelectErr := tx.Query("SELECT external_id FROM ANIME WHERE external_id = $1", anime.ID)
-		if txExecSelectErr != nil {
-			return txExecSelectErr
+	for _, anime := range animes {
+		animeDto, animeDtoErr := sj.animeDao.FindByExternalID(strconv.FormatInt(*anime.ID, 10))
+		if animeDtoErr != nil {
+			return nil, animeDtoErr
 		}
-		defer rows.Close()
-		if !rows.Next() {
-			var airedOn *string
-			if anime.AiredOn != nil {
-				airedOn = anime.AiredOn.toDateValue()
+		dto := models.AnimeDTO{}
+		dto.Name = *anime.Name
+		dto.Kind = *anime.Kind
+		dto.PosterURL = *anime.Image.Original
+		dto.Franchise = *anime.Franchise
+		dto.Processed = false
+		dto.Rating = *anime.Rating
+		dto.ReleasedOn = anime.ReleasedOn.Local()
+		dto.Franchise = *anime.Franchise
+		dto.Russian = *anime.Russian
+		dto.Score = *anime.Score
+		dto.Status = *anime.Status
+		animeNotFound := strings.Compare(animeDtoErr.Error(), "Anime not found") == 0
+		if animeNotFound {
+			if _, createErr := sj.animeDao.Create(dto); createErr != nil {
+				return nil, createErr
 			}
-			var releasedOn *string
-			if anime.ReleasedOn != nil {
-				releasedOn = anime.ReleasedOn.toDateValue()
-			}
-			var posterURL = *(anime.Image.Original)
-			_, txExecErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed, lastmodifytime) "+
-				"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, now())",
-				anime.ID,
-				anime.Name,
-				anime.Russian,
-				anime.URL,
-				anime.Kind,
-				anime.Status,
-				anime.Episodes,
-				anime.EpisodesAired,
-				airedOn,
-				releasedOn,
-				posterURL)
-			if txExecErr != nil {
-				return txExecErr
+		} else {
+			dto.ID = animeDto.ID
+			if updateErr := sj.animeDao.Update(dto); updateErr != nil {
+				return nil, updateErr
 			}
 		}
-		return nil
-	}
-	for i := 0; i < len(*animes); i++ {
-		if err := insertAnimeFunc(tx, (*animes)[i]); err != nil {
-			return nil, rollbackTransaction(tx, err)
-		}
-	}
-	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		return nil, rollbackTransaction(tx, txCommitErr)
 	}
 	log.Println("Page with number " + strconv.FormatInt(page, 10) + " has been processed")
 	return animes, nil
@@ -358,7 +301,7 @@ type Anime struct {
 	Synonyms           *[]string                       `json:"synonyms"`
 	LicenseNameRu      *string                         `json:"license_name_ru"`
 	Duration           *int64                          `json:"duration"`
-	Score              *string                         `json:"score"`
+	Score              *float64                        `json:"score"`
 	Description        *string                         `json:"description"`
 	DescriptionHTML    *string                         `json:"description_html"`
 	DescriptionSource  *string                         `json:"description_source"`

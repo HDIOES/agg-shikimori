@@ -9,7 +9,21 @@ import (
 
 //GenreDAO struct
 type GenreDAO struct {
-	Db sql.DB
+	Db *sql.DB
+}
+
+//FindByExternalID function
+func (dao *GenreDAO) FindByExternalID(externalID string) (*GenreDTO, error) {
+	sqlBuilder := GenreQueryBuilder{}
+	sqlBuilder.SetExternalID(externalID)
+	genreDtos, err := dao.FindByFilter(sqlBuilder)
+	if err != nil {
+		return nil, err
+	}
+	if len(genreDtos) > 0 {
+		return &genreDtos[0], nil
+	}
+	return nil, errors.New("Genre not found")
 }
 
 //FindByFilter function
@@ -100,8 +114,9 @@ type GenreDTO struct {
 
 //GenreQueryBuilder struct
 type GenreQueryBuilder struct {
-	Limit  int32
-	Offset int32
+	Limit      int32
+	Offset     int32
+	ExternalID string
 }
 
 //Build func
@@ -110,6 +125,12 @@ func (gqb *GenreQueryBuilder) Build() (string, []interface{}) {
 	args := make([]interface{}, 0)
 	query.WriteString("SELECT external_id, genre_name, russian, kind FROM genre WHERE 1=1")
 	countOfParameter := 0
+	if len(gqb.ExternalID) > 0 {
+		countOfParameter++
+		args = append(args, gqb.ExternalID)
+		query.WriteString(" AND external_id = $")
+		query.WriteString(strconv.Itoa(countOfParameter))
+	}
 	if gqb.Limit > 0 {
 		countOfParameter++
 		args = append(args, gqb.Limit)
@@ -127,12 +148,17 @@ func (gqb *GenreQueryBuilder) Build() (string, []interface{}) {
 	return query.String(), args
 }
 
-//SetLimit func
+//SetLimit function
 func (gqb *GenreQueryBuilder) SetLimit(limit int32) {
 	gqb.Limit = limit
 }
 
-//SetOffset func
+//SetOffset function
 func (gqb *GenreQueryBuilder) SetOffset(offset int32) {
 	gqb.Offset = offset
+}
+
+//SetExternalID function
+func (gqb *GenreQueryBuilder) SetExternalID(externalID string) {
+	gqb.ExternalID = externalID
 }
