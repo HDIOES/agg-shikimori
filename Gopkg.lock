@@ -9,9 +9,9 @@
 
 [[projects]]
   name = "github.com/Microsoft/go-winio"
-  packages = ["."]
-  revision = "1a8911d1ed007260465c3bfbbc785ac6915a0bb8"
-  version = "v0.4.12"
+  packages = [".","pkg/guid"]
+  revision = "6c72808b55902eae4c5943626030429ff20f3b63"
+  version = "v0.4.14"
 
 [[projects]]
   branch = "master"
@@ -22,8 +22,8 @@
 [[projects]]
   name = "github.com/cenkalti/backoff"
   packages = ["."]
-  revision = "2146c93394225c3732078705043ce9f26584d334"
-  version = "v2.2.0"
+  revision = "5267b6dd4d2666b980a911bf235efa276222cbe2"
+  version = "v2.2.1"
 
 [[projects]]
   branch = "master"
@@ -52,14 +52,14 @@
 [[projects]]
   name = "github.com/gorilla/handlers"
   packages = ["."]
-  revision = "7e0847f9db758cdebd26c149d0ae9d5d0b9c98ce"
-  version = "v1.4.0"
+  revision = "8a3748addc242fc560bd6d4ff28b0374c010b1b4"
+  version = "v1.4.2"
 
 [[projects]]
   name = "github.com/gorilla/mux"
   packages = ["."]
-  revision = "a7962380ca08b5a188038c69871b8d3fbdf31e89"
-  version = "v1.7.0"
+  revision = "00bdffe0f3c77e27d2cf6f5c70232a2d3e4d9c15"
+  version = "v1.7.3"
 
 [[projects]]
   name = "github.com/h2non/parth"
@@ -75,9 +75,9 @@
 
 [[projects]]
   name = "github.com/lib/pq"
-  packages = [".","oid"]
-  revision = "4ded0e9383f75c197b3a2aaa6d590ac52df6fd79"
-  version = "v1.0.0"
+  packages = [".","oid","scram"]
+  revision = "3427c32cb71afc948325f299f040e53c1dd78979"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/opencontainers/go-digest"
@@ -118,14 +118,14 @@
 [[projects]]
   name = "github.com/robfig/cron"
   packages = ["."]
-  revision = "b41be1df696709bb6395fe435af20370037c0b4c"
-  version = "v1.1"
+  revision = "45fbe1491cdd47d74d1bf1396286d67faee8b8b5"
+  version = "v3.0.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/rubenv/sql-migrate"
   packages = [".","sqlparse"]
-  revision = "f4d34eae5a5cf210693e81c604e6bac5f6727927"
+  revision = "87ce952f7079c58e10a2a85835202943ebb9580c"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -146,16 +146,22 @@
   version = "1.0"
 
 [[projects]]
+  name = "go.uber.org/dig"
+  packages = [".","internal/digreflect","internal/dot"]
+  revision = "7ff117f761a3f1b3eb521945c17a1091438eb6de"
+  version = "v1.7.0"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "da137c7871d730100384dbcf36e6f8fa493aef5b"
+  revision = "ca1201d0de80cfde86cb01aea620983605dfe99b"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows"]
-  revision = "fae7ac547cb717d141c433a2a173315e216b64c4"
+  revision = "51ab0e2deafac1f46c46ad59cf0921be2f180c3d"
 
 [[projects]]
   name = "gopkg.in/gorp.v1"
@@ -172,6 +178,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "681b71fe5b3eb2f8fa1c66a0b3bd123e9787b73d8397b5b2182ff3f93ee7207c"
+  inputs-digest = "79e20798a06e5fe82ecf7cc2ca61953dc2b5c4836bdd8dd58527d79103f275a9"
   solver-name = "gps-cdcl"
   solver-version = 1

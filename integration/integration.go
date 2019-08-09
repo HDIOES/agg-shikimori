@@ -3,7 +3,6 @@ package integration
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,24 +15,12 @@ import (
 	"github.com/HDIOES/cpa-backend/rest/util"
 )
 
-var NDD = errors.New("Database does not contains rows with processed = false") //'No database data' error
-
 //ShikimoriJob struct
 type ShikimoriJob struct {
-	animeDao  *models.AnimeDAO
-	genreDao  *models.GenreDAO
-	studioDao *models.StudioDAO
+	AnimeDao  *models.AnimeDAO
+	GenreDao  *models.GenreDAO
+	StudioDao *models.StudioDAO
 	Config    *util.Configuration
-}
-
-//CreateShikimoriJob function
-func CreateShikimoriJob(db *sql.DB, config *util.Configuration) *ShikimoriJob {
-	return &ShikimoriJob{
-		animeDao:  &models.AnimeDAO{Db: db},
-		genreDao:  &models.GenreDAO{Db: db},
-		studioDao: &models.StudioDAO{Db: db},
-		Config:    config,
-	}
 }
 
 //Run function
@@ -82,7 +69,7 @@ func (sj *ShikimoriJob) Run() {
 func (sj *ShikimoriJob) GetNotProcessedExternalAnimes() ([]models.AnimeDTO, error) {
 	sqlBuilder := models.AnimeQueryBuilder{}
 	sqlBuilder.SetProcessed(false)
-	animeDtos, getAnimeDtosErr := sj.animeDao.FindByFilter(sqlBuilder)
+	animeDtos, getAnimeDtosErr := sj.AnimeDao.FindByFilter(sqlBuilder)
 	if getAnimeDtosErr != nil {
 		return nil, getAnimeDtosErr
 	}
@@ -108,27 +95,27 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, animeDto models.Ani
 		return parseError
 	}
 	//then we need to update row in database
-	updateErr := sj.animeDao.Update(animeDto)
+	updateErr := sj.AnimeDao.Update(animeDto)
 	if updateErr != nil {
 		return updateErr
 	}
 	//and now let go to set genre for anime
 	for _, g := range *anime.Genres {
-		genreDto, genreDtoErr := sj.genreDao.FindByExternalID(strconv.FormatInt(*g.ID, 10))
+		genreDto, genreDtoErr := sj.GenreDao.FindByExternalID(strconv.FormatInt(*g.ID, 10))
 		if genreDtoErr != nil {
 			return genreDtoErr
 		}
-		if linkErr := sj.animeDao.LinkAnimeAndGenre(animeDto.ID, genreDto.ID); linkErr != nil {
+		if linkErr := sj.AnimeDao.LinkAnimeAndGenre(animeDto.ID, genreDto.ID); linkErr != nil {
 			return linkErr
 		}
 	}
 	//let go to set studio for anime
 	for _, s := range *anime.Studios {
-		studioDto, studioDtoErr := sj.studioDao.FindByExternalID(strconv.FormatInt(*s.ID, 10))
+		studioDto, studioDtoErr := sj.StudioDao.FindByExternalID(strconv.FormatInt(*s.ID, 10))
 		if studioDtoErr != nil {
 			return studioDtoErr
 		}
-		if linkErr := sj.animeDao.LinkAnimeAndStudio(animeDto.ID, studioDto.ID); linkErr != nil {
+		if linkErr := sj.AnimeDao.LinkAnimeAndStudio(animeDto.ID, studioDto.ID); linkErr != nil {
 			return linkErr
 		}
 	}
@@ -154,7 +141,7 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 	}
 	for _, genre := range genres {
 		externalID := strconv.FormatInt(*genre.ID, 10)
-		genreDto, dtoErr := sj.genreDao.FindByExternalID(externalID)
+		genreDto, dtoErr := sj.GenreDao.FindByExternalID(externalID)
 		genreNotFound := strings.Compare(dtoErr.Error(), "Genre not found") == 0
 		dto := models.GenreDTO{}
 		dto.ExternalID = externalID
@@ -165,13 +152,13 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 			return dtoErr
 		}
 		if genreNotFound {
-			_, createErr := sj.genreDao.Create(dto)
+			_, createErr := sj.GenreDao.Create(dto)
 			if createErr != nil {
 				return createErr
 			}
 		} else {
 			dto.ID = genreDto.ID
-			updateErr := sj.genreDao.Update(dto)
+			updateErr := sj.GenreDao.Update(dto)
 			if updateErr != nil {
 				return updateErr
 			}
@@ -199,7 +186,7 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 	}
 	for _, shikiStudio := range studios {
 		externalID := strconv.FormatInt(*shikiStudio.ID, 10)
-		studioDto, findErr := sj.studioDao.FindByExternalID(externalID)
+		studioDto, findErr := sj.StudioDao.FindByExternalID(externalID)
 		if findErr != nil {
 			return findErr
 		}
@@ -212,12 +199,12 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 			ImageURL:           *shikiStudio.Image,
 		}
 		if studioNotFound {
-			if _, createErr := sj.studioDao.Create(dto); createErr != nil {
+			if _, createErr := sj.StudioDao.Create(dto); createErr != nil {
 				return createErr
 			}
 		} else {
 			dto.ID = studioDto.ID
-			if updateErr := sj.studioDao.Update(dto); updateErr != nil {
+			if updateErr := sj.StudioDao.Update(dto); updateErr != nil {
 				return updateErr
 			}
 		}
@@ -243,7 +230,7 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) ([]An
 		return nil, parseAnimesError
 	}
 	for _, anime := range animes {
-		animeDto, animeDtoErr := sj.animeDao.FindByExternalID(strconv.FormatInt(*anime.ID, 10))
+		animeDto, animeDtoErr := sj.AnimeDao.FindByExternalID(strconv.FormatInt(*anime.ID, 10))
 		if animeDtoErr != nil {
 			return nil, animeDtoErr
 		}
@@ -261,12 +248,12 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) ([]An
 		dto.Status = *anime.Status
 		animeNotFound := strings.Compare(animeDtoErr.Error(), "Anime not found") == 0
 		if animeNotFound {
-			if _, createErr := sj.animeDao.Create(dto); createErr != nil {
+			if _, createErr := sj.AnimeDao.Create(dto); createErr != nil {
 				return nil, createErr
 			}
 		} else {
 			dto.ID = animeDto.ID
-			if updateErr := sj.animeDao.Update(dto); updateErr != nil {
+			if updateErr := sj.AnimeDao.Update(dto); updateErr != nil {
 				return nil, updateErr
 			}
 		}
