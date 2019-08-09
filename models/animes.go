@@ -3,7 +3,6 @@ package models
 import (
 	"database/sql"
 	"errors"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -17,12 +16,10 @@ type AnimeDAO struct {
 //FindByFilter function
 func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) {
 	query, args := filter.Build()
-	log.Println(query)
 	stmt, prepareStmtErr := dao.Db.Prepare(query)
 	if prepareStmtErr != nil {
 		return nil, prepareStmtErr
 	}
-	log.Println(query)
 	defer stmt.Close()
 	result, stmtErr := stmt.Query(args...)
 	if stmtErr != nil {
