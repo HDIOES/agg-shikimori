@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,14 +9,9 @@ import (
 	"github.com/HDIOES/cpa-backend/models"
 )
 
-func CreateGenreHandler(db *sql.DB) http.Handler {
-	dao := models.GenreDAO{Db: db}
-	genreHandler := &GenreHandler{GenreDao: &dao}
-	return genreHandler
-}
-
+//GenreHandler struct
 type GenreHandler struct {
-	GenreDao *models.GenreDAO
+	Dao *models.GenreDAO
 }
 
 func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -27,22 +21,23 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	genreSQLBuilder := models.GenreQueryBuilder{}
 	if limit, limitOk := vars["limit"]; limitOk {
-		if limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32); parseErr != nil {
+		limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32)
+		if parseErr != nil {
 			HandleErr(parseErr, w, 400, "Not valid limit")
 			return
-		} else {
-			genreSQLBuilder.SetOffset(int32(limitInt64))
 		}
+		genreSQLBuilder.SetOffset(int32(limitInt64))
 	}
 	if offset, offsetOk := vars["offset"]; offsetOk {
-		if offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32); parseErr != nil {
+		offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32)
+		if parseErr != nil {
 			HandleErr(parseErr, w, 400, "Not valid offset")
 			return
-		} else {
-			genreSQLBuilder.SetOffset(int32(offsetInt64))
 		}
+		genreSQLBuilder.SetOffset(int32(offsetInt64))
+
 	}
-	genreDtos, findByFilterErr := g.GenreDao.FindByFilter(genreSQLBuilder)
+	genreDtos, findByFilterErr := g.Dao.FindByFilter(genreSQLBuilder)
 	if findByFilterErr != nil {
 		HandleErr(findByFilterErr, w, 400, "Error")
 		return

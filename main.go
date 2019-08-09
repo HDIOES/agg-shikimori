@@ -77,19 +77,44 @@ func CreateDI() *dig.Container {
 		log.Println("Prepare shikimori job")
 		return &integration.ShikimoriJob{AnimeDao: animeDao, GenreDao: genreDao, StudioDao: studioDao, Config: configuration}
 	})
-	container.Provide(func(db *sql.DB, configuration *util.Configuration) *mux.Router {
+	container.Provide(func(
+		animeDao *models.AnimeDAO,
+		genreDao *models.GenreDAO,
+		studioDao *models.StudioDAO,
+		newDao *models.NewDAO,
+		configuration *util.Configuration) (
+		*rest.GenreHandler,
+		*rest.CreateNewHandler,
+		*rest.FindNewHandler,
+		*rest.RandomAnimeHandler,
+		*rest.StudioHandler,
+		*rest.SearchAnimeHandler) {
+		genreHandler := &rest.GenreHandler{Dao: genreDao}
+		createNewHandler := &rest.CreateNewHandler{Dao: newDao}
+		findNewHandler := &rest.FindNewHandler{Dao: newDao}
+		randomAnimeHandler := &rest.RandomAnimeHandler{Dao: animeDao}
+		studioHandler := &rest.StudioHandler{Dao: studioDao}
+		searchAnimeHandler := &rest.SearchAnimeHandler{Dao: animeDao}
+		return genreHandler, createNewHandler, findNewHandler, randomAnimeHandler, studioHandler, searchAnimeHandler
+	})
+	container.Provide(func(genreHandler *rest.GenreHandler,
+		createNewHandler *rest.CreateNewHandler,
+		findNewHandler *rest.FindNewHandler,
+		randomAnimeHandler *rest.RandomAnimeHandler,
+		studioHandler *rest.StudioHandler,
+		searchAnimeHandler *rest.SearchAnimeHandler) *mux.Router {
 		router := mux.NewRouter()
-		router.Handle("/api/animes/random", rest.CreateRandomAnimeHandler(db, configuration)).
+		router.Handle("/api/animes/random", randomAnimeHandler).
 			Methods("GET")
-		router.Handle("/api/animes/search", rest.CreateSearchAnimeHandler(db, router, configuration)).
+		router.Handle("/api/animes/search", searchAnimeHandler).
 			Methods("GET")
-		router.Handle("/api/genres/search", rest.CreateGenreHandler(db)).
+		router.Handle("/api/genres/search", genreHandler).
 			Methods("GET")
-		router.Handle("/api/studios/search", rest.CreateStudioHandler(db)).
+		router.Handle("/api/studios/search", studioHandler).
 			Methods("GET")
-		router.Handle("/api/news", rest.CreateCreateNewHandler(db)).
+		router.Handle("/api/news", createNewHandler).
 			Methods("POST")
-		router.Handle("/api/news", rest.CreateFindNewHandler(db)).
+		router.Handle("/api/news", findNewHandler).
 			Methods("GET")
 		router.Handle("/api/news", nil).
 			Methods("DELETE")

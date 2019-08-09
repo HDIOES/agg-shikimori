@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -136,7 +137,9 @@ func (dao *AnimeDAO) FindByID(ID int64) (*AnimeDTO, error) {
 		var duration sql.NullFloat64
 		var rating sql.NullString
 		var franchase sql.NullString
-		result.Scan(&id,
+		var processed sql.NullBool
+		result.Scan(
+			&id,
 			&name,
 			&externalID,
 			&russianName,
@@ -151,7 +154,8 @@ func (dao *AnimeDAO) FindByID(ID int64) (*AnimeDTO, error) {
 			&score,
 			&duration,
 			&rating,
-			&franchase)
+			&franchase,
+			&processed)
 		animeDto.ID = id.Int64
 		animeDto.Name = name.String
 		animeDto.ExternalID = externalID.String
@@ -176,12 +180,13 @@ func (dao *AnimeDAO) FindByID(ID int64) (*AnimeDTO, error) {
 		animeDto.Duration = duration.Float64
 		animeDto.Rating = rating.String
 		animeDto.Franchise = franchase.String
+		animeDto.Processed = processed.Bool
 	}
 	return &dto, nil
 }
 
 func parseTime(value string) (time.Time, error) {
-	return time.Parse("2019-04-29", value)
+	return time.Parse("2006-01-02T15:04:05Z", value)
 }
 
 //Create finction
@@ -328,7 +333,12 @@ func (dao *AnimeDAO) Update(anime AnimeDTO) error {
 //GetCount function
 func (dao *AnimeDAO) GetCount(sqlBuilder AnimeQueryBuilder) (int64, error) {
 	sqlQuery, args := sqlBuilder.Build()
-	result, queryErr := dao.Db.Query(sqlQuery, args)
+	stmt, prepareStmtErr := dao.Db.Prepare(sqlQuery)
+	if prepareStmtErr != nil {
+		return 0, prepareStmtErr
+	}
+	defer stmt.Close()
+	result, queryErr := stmt.Query(args...)
 	if queryErr != nil {
 		return 0, queryErr
 	}
@@ -345,11 +355,12 @@ func (dao *AnimeDAO) GetCount(sqlBuilder AnimeQueryBuilder) (int64, error) {
 func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, error) {
 	query, args := sqlBuilder.Build()
 	stmt, prepareStmtErr := dao.Db.Prepare(query)
+	log.Println(query)
 	if prepareStmtErr != nil {
 		return nil, prepareStmtErr
 	}
 	defer stmt.Close()
-	result, stmtErr := stmt.Query(args)
+	result, stmtErr := stmt.Query(args...)
 	if stmtErr != nil {
 		return nil, stmtErr
 	}
@@ -372,6 +383,7 @@ func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, er
 		var duration sql.NullFloat64
 		var rating sql.NullString
 		var franchase sql.NullString
+		var processed sql.NullBool
 		result.Scan(&id,
 			&name,
 			&externalID,
@@ -387,7 +399,8 @@ func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, er
 			&score,
 			&duration,
 			&rating,
-			&franchase)
+			&franchase,
+			&processed)
 		animeDto.ID = id.Int64
 		animeDto.Name = name.String
 		animeDto.ExternalID = externalID.String
@@ -412,6 +425,7 @@ func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, er
 		animeDto.Duration = duration.Float64
 		animeDto.Rating = rating.String
 		animeDto.Franchise = franchase.String
+		animeDto.Processed = processed.Bool
 	}
 	return &animeDto, nil
 }

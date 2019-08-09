@@ -66,7 +66,7 @@ func (dao *StudioDAO) FindByFilter(sqlBuilder StudioQueryBuilder) ([]StudioDTO, 
 		return nil, stmtErr
 	}
 	defer stmt.Close()
-	result, resultErr := stmt.Query(args)
+	result, resultErr := stmt.Query(args...)
 	if resultErr != nil {
 		return nil, resultErr
 	}

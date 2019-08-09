@@ -34,7 +34,7 @@ func (dao *GenreDAO) FindByFilter(sqlBuilder GenreQueryBuilder) ([]GenreDTO, err
 		return nil, stmtErr
 	}
 	defer stmt.Close()
-	result, resultErr := stmt.Query(args)
+	result, resultErr := stmt.Query(args...)
 	if resultErr != nil {
 		return nil, resultErr
 	}

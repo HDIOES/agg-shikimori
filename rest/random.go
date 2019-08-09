@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"database/sql"
 	"log"
 	"math/rand"
 	"net/http"
@@ -10,15 +9,7 @@ import (
 	"strings"
 
 	"github.com/HDIOES/cpa-backend/models"
-	"github.com/HDIOES/cpa-backend/rest/util"
 )
-
-//CreateRandomAnimeHandler function receive handler for rest-method /animes/random
-func CreateRandomAnimeHandler(db *sql.DB, config *util.Configuration) http.Handler {
-	animeDao := models.AnimeDAO{Db: db}
-	randomAnimeHandler := &RandomAnimeHandler{Dao: &animeDao}
-	return randomAnimeHandler
-}
 
 //RandomAnimeHandler struct
 type RandomAnimeHandler struct {
