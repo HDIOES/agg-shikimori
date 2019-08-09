@@ -17,12 +17,14 @@ type AnimeDAO struct {
 //FindByFilter function
 func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) {
 	query, args := filter.Build()
+	log.Println(query)
 	stmt, prepareStmtErr := dao.Db.Prepare(query)
 	if prepareStmtErr != nil {
 		return nil, prepareStmtErr
 	}
+	log.Println(query)
 	defer stmt.Close()
-	result, stmtErr := stmt.Query(args)
+	result, stmtErr := stmt.Query(args...)
 	if stmtErr != nil {
 		return nil, stmtErr
 	}
@@ -46,7 +48,9 @@ func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) 
 		var duration sql.NullFloat64
 		var rating sql.NullString
 		var franchase sql.NullString
-		result.Scan(&id,
+		var processed sql.NullBool
+		result.Scan(
+			&id,
 			&name,
 			&externalID,
 			&russianName,
@@ -61,7 +65,8 @@ func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) 
 			&score,
 			&duration,
 			&rating,
-			&franchase)
+			&franchase,
+			&processed)
 		animeDto.ID = id.Int64
 		animeDto.Name = name.String
 		animeDto.ExternalID = externalID.String
@@ -73,19 +78,22 @@ func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) 
 		animeDto.EpizodesAired = epizodesAired.Int64
 		airedOnTime, parseTimeErr := parseTime(airedOn.String)
 		if parseTimeErr != nil {
-			return nil, parseTimeErr
+			animeDto.AiredOn = time.Now()
+		} else {
+			animeDto.AiredOn = airedOnTime
 		}
-		animeDto.AiredOn = airedOnTime
 		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
 		if parseTimeErr != nil {
-			return nil, parseTimeErr
+			animeDto.ReleasedOn = time.Now()
+		} else {
+			animeDto.ReleasedOn = releasedOnTime
 		}
-		animeDto.ReleasedOn = releasedOnTime
 		animeDto.PosterURL = posterURL.String
 		animeDto.Score = score.Float64
 		animeDto.Duration = duration.Float64
 		animeDto.Rating = rating.String
 		animeDto.Franchise = franchase.String
+		animeDto.Processed = processed.Bool
 		dtos = append(dtos, animeDto)
 	}
 	return dtos, nil
@@ -138,8 +146,7 @@ func (dao *AnimeDAO) FindByID(ID int64) (*AnimeDTO, error) {
 		var rating sql.NullString
 		var franchase sql.NullString
 		var processed sql.NullBool
-		result.Scan(
-			&id,
+		result.Scan(&id,
 			&name,
 			&externalID,
 			&russianName,
@@ -167,14 +174,16 @@ func (dao *AnimeDAO) FindByID(ID int64) (*AnimeDTO, error) {
 		animeDto.EpizodesAired = epizodesAired.Int64
 		airedOnTime, parseTimeErr := parseTime(airedOn.String)
 		if parseTimeErr != nil {
-			return nil, parseTimeErr
+			animeDto.AiredOn = time.Now()
+		} else {
+			animeDto.AiredOn = airedOnTime
 		}
-		animeDto.AiredOn = airedOnTime
 		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
 		if parseTimeErr != nil {
-			return nil, parseTimeErr
+			animeDto.ReleasedOn = time.Now()
+		} else {
+			animeDto.ReleasedOn = releasedOnTime
 		}
-		animeDto.ReleasedOn = releasedOnTime
 		animeDto.PosterURL = posterURL.String
 		animeDto.Score = score.Float64
 		animeDto.Duration = duration.Float64
@@ -355,7 +364,6 @@ func (dao *AnimeDAO) GetCount(sqlBuilder AnimeQueryBuilder) (int64, error) {
 func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, error) {
 	query, args := sqlBuilder.Build()
 	stmt, prepareStmtErr := dao.Db.Prepare(query)
-	log.Println(query)
 	if prepareStmtErr != nil {
 		return nil, prepareStmtErr
 	}
@@ -447,8 +455,8 @@ type AnimeQueryBuilder struct {
 	Ids        []string
 	ExcludeIds []string
 	SQLQuery   strings.Builder
-	CountOnly  bool
 	Processed  bool
+	CountOnly  bool
 	RowNumber  int64
 }
 
@@ -539,7 +547,9 @@ func (aqb *AnimeQueryBuilder) SetRowNumber(rowNumber int64) {
 
 //Build function
 func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
-	if aqb.RowNumber > 0 && !aqb.CountOnly {
+	if aqb.CountOnly {
+		aqb.SQLQuery.WriteString("SELECT COUNT(*) FROM (")
+	} else {
 		aqb.SQLQuery.WriteString("SELECT ")
 		aqb.SQLQuery.WriteString("query.anime_internal_id,")
 		aqb.SQLQuery.WriteString("query.name,")
@@ -559,9 +569,6 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 		aqb.SQLQuery.WriteString("query.franchase,")
 		aqb.SQLQuery.WriteString("query.processed ")
 		aqb.SQLQuery.WriteString("FROM (")
-	}
-	if aqb.RowNumber == 0 && aqb.CountOnly {
-		aqb.SQLQuery.WriteString("SELECT COUNT(*) FROM (")
 	}
 	aqb.SQLQuery.WriteString("SELECT ")
 	aqb.SQLQuery.WriteString("row_number() over(),")
@@ -805,9 +812,9 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 			}
 		}
 	}
-	if aqb.CountOnly && aqb.RowNumber == 0 {
+	if aqb.CountOnly {
 		aqb.SQLQuery.WriteString(") as query")
-	} else if !aqb.CountOnly && aqb.RowNumber > 0 {
+	} else if aqb.RowNumber > 0 {
 		countOfParameter++
 		aqb.SQLQuery.WriteString(") as query where query.row_number = $")
 		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
@@ -815,10 +822,10 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 	} else {
 		if aqb.Limit > 0 {
 			countOfParameter++
-			aqb.SQLQuery.WriteString(" LIMIT $" + strconv.Itoa(countOfParameter))
+			aqb.SQLQuery.WriteString(") as query LIMIT $" + strconv.Itoa(countOfParameter))
 			args = append(args, aqb.Limit)
 		} else {
-			aqb.SQLQuery.WriteString(" LIMIT 50")
+			aqb.SQLQuery.WriteString(") as query LIMIT 50")
 		}
 		if aqb.Offset > 0 {
 			countOfParameter++

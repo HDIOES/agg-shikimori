@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"net/url"
@@ -9,16 +8,7 @@ import (
 	"strings"
 
 	"github.com/HDIOES/cpa-backend/models"
-	"github.com/HDIOES/cpa-backend/rest/util"
-	"github.com/gorilla/mux"
 )
-
-//CreateSearchAnimeHandler function
-func CreateSearchAnimeHandler(db *sql.DB, router *mux.Router, config *util.Configuration) http.Handler {
-	animeDao := models.AnimeDAO{Db: db}
-	searchAnimeHandler := &SearchAnimeHandler{Dao: &animeDao}
-	return searchAnimeHandler
-}
 
 //SearchAnimeHandler struct
 type SearchAnimeHandler struct {
