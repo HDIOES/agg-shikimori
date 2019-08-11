@@ -84,15 +84,27 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, animeDto models.Ani
 		return getAnimeByIDErr
 	}
 	defer resp.Body.Close()
-	anime := &Anime{}
+	anime := Anime{}
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
 	if readStudiosErr != nil {
 		return readStudiosErr
 	}
 	log.Println("Response body: ", string(body))
-	parseError := json.Unmarshal(body, anime)
+	parseError := json.Unmarshal(body, &anime)
 	if parseError != nil {
 		return parseError
+	}
+	animeDto.Rating = anime.Rating
+	if anime.Score != nil {
+		score, parseErr := strconv.ParseFloat(*anime.Score, 64)
+		if parseErr == nil {
+			animeDto.Score = &score
+		}
+	}
+	animeDto.Franchise = anime.Franchise
+	if anime.Duration != nil {
+		durationFloat := float64(*anime.Duration)
+		animeDto.Duration = &durationFloat
 	}
 	//then we need to update row in database
 	updateErr := sj.AnimeDao.Update(animeDto)
@@ -135,7 +147,7 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 	if readGenresErr != nil {
 		return readGenresErr
 	}
-	parseGenresError := json.Unmarshal(body, genres)
+	parseGenresError := json.Unmarshal(body, &genres)
 	if parseGenresError != nil {
 		return parseGenresError
 	}
@@ -145,12 +157,9 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 		genreNotFound := strings.Compare(dtoErr.Error(), "Genre not found") == 0
 		dto := models.GenreDTO{}
 		dto.ExternalID = externalID
-		dto.Name = *genre.Name
-		dto.Russian = *genre.Russian
-		dto.Kind = *genre.Kind
-		if dtoErr != nil {
-			return dtoErr
-		}
+		dto.Name = genre.Name
+		dto.Russian = genre.Russian
+		dto.Kind = genre.Kind
 		if genreNotFound {
 			_, createErr := sj.GenreDao.Create(dto)
 			if createErr != nil {
@@ -180,23 +189,20 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 	if readStudiosErr != nil {
 		return readStudiosErr
 	}
-	parseError := json.Unmarshal(body, studios)
+	parseError := json.Unmarshal(body, &studios)
 	if parseError != nil {
 		return parseError
 	}
 	for _, shikiStudio := range studios {
 		externalID := strconv.FormatInt(*shikiStudio.ID, 10)
 		studioDto, findErr := sj.StudioDao.FindByExternalID(externalID)
-		if findErr != nil {
-			return findErr
-		}
 		studioNotFound := strings.Compare(findErr.Error(), "Studio not found") == 0
 		dto := models.StudioDTO{
 			ExternalID:         externalID,
-			Name:               *shikiStudio.Name,
-			FilteredStudioName: *shikiStudio.FilteredName,
-			IsReal:             *shikiStudio.Real,
-			ImageURL:           *shikiStudio.Image,
+			Name:               shikiStudio.Name,
+			FilteredStudioName: shikiStudio.FilteredName,
+			IsReal:             shikiStudio.Real,
+			ImageURL:           shikiStudio.Image,
 		}
 		if studioNotFound {
 			if _, createErr := sj.StudioDao.Create(dto); createErr != nil {
@@ -225,27 +231,33 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) ([]An
 	if readAnimesErr != nil {
 		return nil, readAnimesErr
 	}
-	parseAnimesError := json.Unmarshal(body, animes)
+	parseAnimesError := json.Unmarshal(body, &animes)
 	if parseAnimesError != nil {
 		return nil, parseAnimesError
 	}
 	for _, anime := range animes {
 		animeDto, animeDtoErr := sj.AnimeDao.FindByExternalID(strconv.FormatInt(*anime.ID, 10))
-		if animeDtoErr != nil {
-			return nil, animeDtoErr
-		}
 		dto := models.AnimeDTO{}
-		dto.Name = *anime.Name
-		dto.Kind = *anime.Kind
-		dto.PosterURL = *anime.Image.Original
-		dto.Franchise = *anime.Franchise
-		dto.Processed = false
-		dto.Rating = *anime.Rating
-		dto.ReleasedOn = anime.ReleasedOn.Local()
-		dto.Franchise = *anime.Franchise
-		dto.Russian = *anime.Russian
-		dto.Score = *anime.Score
-		dto.Status = *anime.Status
+		dto.ExternalID = strconv.FormatInt(*anime.ID, 10)
+		dto.Name = anime.Name
+		dto.Russian = anime.Russian
+		dto.Kind = anime.Kind
+		dto.PosterURL = anime.Image.Original
+		dto.AnimeURL = anime.URL
+		dto.Kind = anime.Kind
+		dto.Status = anime.Status
+		dto.Epizodes = anime.Episodes
+		dto.EpizodesAired = anime.EpisodesAired
+
+		airedOn := anime.AiredOn.Local()
+		dto.AiredOn = &airedOn
+
+		releasedOn := anime.ReleasedOn.Local()
+		dto.ReleasedOn = &releasedOn
+
+		processed := false
+		dto.Processed = &processed
+
 		animeNotFound := strings.Compare(animeDtoErr.Error(), "Anime not found") == 0
 		if animeNotFound {
 			if _, createErr := sj.AnimeDao.Create(dto); createErr != nil {
@@ -288,7 +300,7 @@ type Anime struct {
 	Synonyms           *[]string                       `json:"synonyms"`
 	LicenseNameRu      *string                         `json:"license_name_ru"`
 	Duration           *int64                          `json:"duration"`
-	Score              *float64                        `json:"score"`
+	Score              *string                         `json:"score"`
 	Description        *string                         `json:"description"`
 	DescriptionHTML    *string                         `json:"description_html"`
 	DescriptionSource  *string                         `json:"description_source"`

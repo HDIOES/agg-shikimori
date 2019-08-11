@@ -28,7 +28,7 @@ func (cnh *CreateNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if newID, createErr := cnh.Dao.Create(newDto); createErr != nil {
 		HandleErr(createErr, w, 400, "Error")
 	} else {
-		ReturnResponseAsJSON(w, CreateNewResponse{ID: newID}, 200)
+		ReturnResponseAsJSON(w, CreateNewResponse{ID: &newID}, 200)
 	}
 }
 
@@ -58,12 +58,12 @@ func (fnh *FindNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 //CreateNewResponse struct
 type CreateNewResponse struct {
-	ID int64 `json:"id"`
+	ID *int64 `json:"id"`
 }
 
 //NewRo struct
 type NewRo struct {
-	ID   int64
-	Name string
-	Body string
+	ID   *int64
+	Name *string
+	Body *string
 }

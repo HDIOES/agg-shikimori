@@ -101,32 +101,32 @@ func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) 
 			&franchase,
 			&processed)
 		animeDto.ID = id.Int64
-		animeDto.Name = name.String
+		animeDto.Name = &name.String
 		animeDto.ExternalID = externalID.String
-		animeDto.Russian = russianName.String
-		animeDto.AnimeURL = animeURL.String
-		animeDto.Kind = kind.String
-		animeDto.Status = animeStatus.String
-		animeDto.Epizodes = epizodes.Int64
-		animeDto.EpizodesAired = epizodesAired.Int64
+		animeDto.Russian = &russianName.String
+		animeDto.AnimeURL = &animeURL.String
+		animeDto.Kind = &kind.String
+		animeDto.Status = &animeStatus.String
+		animeDto.Epizodes = &epizodes.Int64
+		animeDto.EpizodesAired = &epizodesAired.Int64
 		airedOnTime, parseTimeErr := parseTime(airedOn.String)
 		if parseTimeErr != nil {
-			animeDto.AiredOn = time.Now()
+			animeDto.AiredOn = nil
 		} else {
-			animeDto.AiredOn = airedOnTime
+			animeDto.AiredOn = &airedOnTime
 		}
 		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
 		if parseTimeErr != nil {
-			animeDto.ReleasedOn = time.Now()
+			animeDto.ReleasedOn = nil
 		} else {
-			animeDto.ReleasedOn = releasedOnTime
+			animeDto.ReleasedOn = &releasedOnTime
 		}
-		animeDto.PosterURL = posterURL.String
-		animeDto.Score = score.Float64
-		animeDto.Duration = duration.Float64
-		animeDto.Rating = rating.String
-		animeDto.Franchise = franchase.String
-		animeDto.Processed = processed.Bool
+		animeDto.PosterURL = &posterURL.String
+		animeDto.Score = &score.Float64
+		animeDto.Duration = &duration.Float64
+		animeDto.Rating = &rating.String
+		animeDto.Franchise = &franchase.String
+		animeDto.Processed = &processed.Bool
 		dtos = append(dtos, animeDto)
 	}
 	return dtos, nil
@@ -197,32 +197,32 @@ func (dao *AnimeDAO) FindByID(ID int64) (*AnimeDTO, error) {
 			&franchase,
 			&processed)
 		animeDto.ID = id.Int64
-		animeDto.Name = name.String
+		animeDto.Name = &name.String
 		animeDto.ExternalID = externalID.String
-		animeDto.Russian = russianName.String
-		animeDto.AnimeURL = animeURL.String
-		animeDto.Kind = kind.String
-		animeDto.Status = animeStatus.String
-		animeDto.Epizodes = epizodes.Int64
-		animeDto.EpizodesAired = epizodesAired.Int64
+		animeDto.Russian = &russianName.String
+		animeDto.AnimeURL = &animeURL.String
+		animeDto.Kind = &kind.String
+		animeDto.Status = &animeStatus.String
+		animeDto.Epizodes = &epizodes.Int64
+		animeDto.EpizodesAired = &epizodesAired.Int64
 		airedOnTime, parseTimeErr := parseTime(airedOn.String)
 		if parseTimeErr != nil {
-			animeDto.AiredOn = time.Now()
+			animeDto.AiredOn = nil
 		} else {
-			animeDto.AiredOn = airedOnTime
+			animeDto.AiredOn = &airedOnTime
 		}
 		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
 		if parseTimeErr != nil {
-			animeDto.ReleasedOn = time.Now()
+			animeDto.ReleasedOn = nil
 		} else {
-			animeDto.ReleasedOn = releasedOnTime
+			animeDto.ReleasedOn = &releasedOnTime
 		}
-		animeDto.PosterURL = posterURL.String
-		animeDto.Score = score.Float64
-		animeDto.Duration = duration.Float64
-		animeDto.Rating = rating.String
-		animeDto.Franchise = franchase.String
-		animeDto.Processed = processed.Bool
+		animeDto.PosterURL = &posterURL.String
+		animeDto.Score = &score.Float64
+		animeDto.Duration = &duration.Float64
+		animeDto.Rating = &rating.String
+		animeDto.Franchise = &franchase.String
+		animeDto.Processed = &processed.Bool
 	}
 	return &dto, nil
 }
@@ -321,23 +321,23 @@ func (dao *AnimeDAO) Update(anime AnimeDTO) error {
 	}
 	queryBuilder := strings.Builder{}
 	queryBuilder.WriteString("UPDATE anime ")
-	queryBuilder.WriteString("SET external_id = $1 ")
-	queryBuilder.WriteString("SET name = $2 ")
-	queryBuilder.WriteString("SET russian = $3 ")
-	queryBuilder.WriteString("SET amine_url = $4 ")
-	queryBuilder.WriteString("SET kind = $5 ")
-	queryBuilder.WriteString("SET anime_status = $6 ")
-	queryBuilder.WriteString("SET epizodes = $7 ")
-	queryBuilder.WriteString("SET epizodes_aired = $8 ")
-	queryBuilder.WriteString("SET aired_on = $9 ")
-	queryBuilder.WriteString("SET released_on = $10 ")
-	queryBuilder.WriteString("SET poster_url = $11 ")
-	queryBuilder.WriteString("SET score = $12 ")
-	queryBuilder.WriteString("SET duration = $13 ")
-	queryBuilder.WriteString("SET rating = $14 ")
-	queryBuilder.WriteString("SET franchase = $15 ")
-	queryBuilder.WriteString("SET processed = $16 ")
-	queryBuilder.WriteString("SET lastmodifytime = now() ")
+	queryBuilder.WriteString("SET external_id = $1, ")
+	queryBuilder.WriteString("name = $2, ")
+	queryBuilder.WriteString("russian = $3, ")
+	queryBuilder.WriteString("amine_url = $4, ")
+	queryBuilder.WriteString("kind = $5, ")
+	queryBuilder.WriteString("anime_status = $6, ")
+	queryBuilder.WriteString("epizodes = $7, ")
+	queryBuilder.WriteString("epizodes_aired = $8, ")
+	queryBuilder.WriteString("aired_on = $9, ")
+	queryBuilder.WriteString("released_on = $10, ")
+	queryBuilder.WriteString("poster_url = $11, ")
+	queryBuilder.WriteString("score = $12, ")
+	queryBuilder.WriteString("duration = $13, ")
+	queryBuilder.WriteString("rating = $14, ")
+	queryBuilder.WriteString("franchase = $15, ")
+	queryBuilder.WriteString("processed = $16, ")
+	queryBuilder.WriteString("lastmodifytime = now() ")
 	queryBuilder.WriteString("WHERE id = $17")
 	stmt, prepareStmtErr := tx.Prepare(queryBuilder.String())
 	if prepareStmtErr != nil {
@@ -348,6 +348,7 @@ func (dao *AnimeDAO) Update(anime AnimeDTO) error {
 		anime.Name,
 		anime.Russian,
 		anime.AnimeURL,
+		anime.Kind,
 		anime.Status,
 		anime.Epizodes,
 		anime.EpizodesAired,
@@ -359,7 +360,6 @@ func (dao *AnimeDAO) Update(anime AnimeDTO) error {
 		anime.Rating,
 		anime.Franchise,
 		anime.Processed,
-		anime.LastModifyTime,
 		anime.ID)
 	if stmtErr != nil {
 		return rollbackTransaction(tx, stmtErr)
@@ -441,30 +441,30 @@ func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, er
 			&franchase,
 			&processed)
 		animeDto.ID = id.Int64
-		animeDto.Name = name.String
+		animeDto.Name = &name.String
 		animeDto.ExternalID = externalID.String
-		animeDto.Russian = russianName.String
-		animeDto.AnimeURL = animeURL.String
-		animeDto.Kind = kind.String
-		animeDto.Status = animeStatus.String
-		animeDto.Epizodes = epizodes.Int64
-		animeDto.EpizodesAired = epizodesAired.Int64
+		animeDto.Russian = &russianName.String
+		animeDto.AnimeURL = &animeURL.String
+		animeDto.Kind = &kind.String
+		animeDto.Status = &animeStatus.String
+		animeDto.Epizodes = &epizodes.Int64
+		animeDto.EpizodesAired = &epizodesAired.Int64
 		airedOnTime, parseTimeErr := parseTime(airedOn.String)
 		if parseTimeErr != nil {
 			return nil, parseTimeErr
 		}
-		animeDto.AiredOn = airedOnTime
+		animeDto.AiredOn = &airedOnTime
 		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
 		if parseTimeErr != nil {
 			return nil, parseTimeErr
 		}
-		animeDto.ReleasedOn = releasedOnTime
-		animeDto.PosterURL = posterURL.String
-		animeDto.Score = score.Float64
-		animeDto.Duration = duration.Float64
-		animeDto.Rating = rating.String
-		animeDto.Franchise = franchase.String
-		animeDto.Processed = processed.Bool
+		animeDto.ReleasedOn = &releasedOnTime
+		animeDto.PosterURL = &posterURL.String
+		animeDto.Score = &score.Float64
+		animeDto.Duration = &duration.Float64
+		animeDto.Rating = &rating.String
+		animeDto.Franchise = &franchase.String
+		animeDto.Processed = &processed.Bool
 	}
 	return &animeDto, nil
 }
@@ -830,6 +830,7 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 				countOfParameter++
 				aqb.SQLQuery.WriteString("$")
 				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
+				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
 				args = append(args, "animes.status")
 			}
 		case "relevance":
@@ -871,21 +872,21 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 //AnimeDTO struct
 type AnimeDTO struct {
 	ID             int64
-	Name           string
 	ExternalID     string
-	Russian        string
-	AnimeURL       string
-	Kind           string
-	Status         string
-	Epizodes       int64
-	EpizodesAired  int64
-	AiredOn        time.Time
-	ReleasedOn     time.Time
-	PosterURL      string
-	Score          float64
-	Duration       float64
-	Rating         string
-	Franchise      string
-	Processed      bool
-	LastModifyTime time.Time
+	Name           *string
+	Russian        *string
+	AnimeURL       *string
+	Kind           *string
+	Status         *string
+	Epizodes       *int64
+	EpizodesAired  *int64
+	AiredOn        *time.Time
+	ReleasedOn     *time.Time
+	PosterURL      *string
+	Score          *float64
+	Duration       *float64
+	Rating         *string
+	Franchise      *string
+	Processed      *bool
+	LastModifyTime *time.Time
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //StudioDAO struct
@@ -55,10 +56,10 @@ func (dao *StudioDAO) FindByID(id int64) (*StudioDTO, error) {
 		result.Scan(&ID, &externalID, &name, &filteredName, &isReal, &imageURL)
 		dto.ID = ID.Int64
 		dto.ExternalID = externalID.String
-		dto.Name = name.String
-		dto.FilteredStudioName = filteredName.String
-		dto.IsReal = isReal.Bool
-		dto.ImageURL = imageURL.String
+		dto.Name = &name.String
+		dto.FilteredStudioName = &filteredName.String
+		dto.IsReal = &isReal.Bool
+		dto.ImageURL = &imageURL.String
 		return &dto, nil
 	}
 	return nil, errors.New("Studio not found")
@@ -100,7 +101,14 @@ func (dao *StudioDAO) FindByFilter(sqlBuilder StudioQueryBuilder) ([]StudioDTO, 
 		var isReal sql.NullBool
 		var imageURL sql.NullString
 		result.Scan(&ID, &externalID, &name, &filteredName, &isReal, &imageURL)
-		dto := StudioDTO{ID: ID.Int64, ExternalID: externalID.String, Name: name.String, FilteredStudioName: filteredName.String, IsReal: isReal.Bool, ImageURL: imageURL.String}
+		dto := StudioDTO{
+			ID:                 ID.Int64,
+			ExternalID:         externalID.String,
+			Name:               &name.String,
+			FilteredStudioName: &filteredName.String,
+			IsReal:             &isReal.Bool,
+			ImageURL:           &imageURL.String,
+		}
 		dtos = append(dtos, dto)
 	}
 	return dtos, nil
@@ -114,6 +122,7 @@ func (dao *StudioDAO) Create(dto StudioDTO) (int64, error) {
 	}
 	stmt, stmtErr := tx.Prepare("INSERT INTO studio (external_id, studio_name, filtered_studio_name, is_real, image_url) VALUES($1, $2, $3, $4, $5) RETURNING id")
 	if stmtErr != nil {
+		time.Now()
 		return 0, rollbackTransaction(tx, stmtErr)
 	}
 	defer stmt.Close()
@@ -160,10 +169,10 @@ func (dao *StudioDAO) Update(dto StudioDTO) error {
 type StudioDTO struct {
 	ID                 int64
 	ExternalID         string
-	Name               string
-	FilteredStudioName string
-	IsReal             bool
-	ImageURL           string
+	Name               *string
+	FilteredStudioName *string
+	IsReal             *bool
+	ImageURL           *string
 }
 
 //StudioQueryBuilder struct
@@ -177,12 +186,12 @@ type StudioQueryBuilder struct {
 func (sqb *StudioQueryBuilder) Build() (string, []interface{}) {
 	query := strings.Builder{}
 	args := make([]interface{}, 0)
-	query.WriteString("SELECT external_id, studio_name, filtered_studio_name, kind FROM studio WHERE 1=1")
+	query.WriteString("SELECT id, external_id, studio_name, filtered_studio_name, is_real, image_url FROM studio WHERE 1=1")
 	countOfParameter := 0
 	if len(sqb.ExternalID) > 0 {
 		countOfParameter++
 		args = append(args, sqb.ExternalID)
-		query.WriteString(" AND $")
+		query.WriteString(" AND external_id = $")
 		query.WriteString(strconv.Itoa(countOfParameter))
 	}
 	if sqb.Limit > 0 {

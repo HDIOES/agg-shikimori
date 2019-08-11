@@ -42,7 +42,7 @@ func (g *StudioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		studios := []StudioRo{}
 		for _, dto := range studiosDtos {
 			ro := StudioRo{
-				ID:           dto.ID,
+				ID:           &dto.ID,
 				Name:         dto.Name,
 				FilteredName: dto.FilteredStudioName,
 			}
@@ -54,7 +54,7 @@ func (g *StudioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 //StudioRo struct
 type StudioRo struct {
-	ID           int64  `json:"id"`
-	Name         string `json:"name"`
-	FilteredName string `json:"filtered_name"`
+	ID           *int64  `json:"id"`
+	Name         *string `json:"name"`
+	FilteredName *string `json:"filtered_name"`
 }

@@ -18,9 +18,9 @@ import (
 func TestCreateNew_success(t *testing.T) {
 	diContainer.Invoke(func(router *mux.Router, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) {
 		clearDb(newDao, animeDao, genreDao, studioDao)
-		const Name = "Ужасная статья"
-		const Body = "Ужасная статья?"
-		requestBody := rest.NewRo{Name: Name, Body: Body}
+		Name := "Ужасная статья"
+		Body := "Ужасная статья?"
+		requestBody := rest.NewRo{Name: &Name, Body: &Body}
 		reader, readErr := GetJSONBodyReader(requestBody)
 		if readErr != nil {
 			t.Fatal(readErr)

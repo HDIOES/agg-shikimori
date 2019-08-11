@@ -67,7 +67,7 @@ func (dao *GenreDAO) FindByFilter(sqlBuilder GenreQueryBuilder) ([]GenreDTO, err
 		var russian sql.NullString
 		var kind sql.NullString
 		result.Scan(&ID, &externalID, &name, &russian, &kind)
-		dto := GenreDTO{ID: ID.Int64, ExternalID: externalID.String, Name: name.String, Russian: russian.String, Kind: kind.String}
+		dto := GenreDTO{ID: ID.Int64, ExternalID: externalID.String, Name: &name.String, Russian: &russian.String, Kind: &kind.String}
 		dtos = append(dtos, dto)
 	}
 	return dtos, nil
@@ -127,9 +127,9 @@ func (dao *GenreDAO) Update(dto GenreDTO) error {
 type GenreDTO struct {
 	ID         int64
 	ExternalID string
-	Name       string
-	Russian    string
-	Kind       string
+	Name       *string
+	Russian    *string
+	Kind       *string
 }
 
 //GenreQueryBuilder struct
@@ -143,7 +143,7 @@ type GenreQueryBuilder struct {
 func (gqb *GenreQueryBuilder) Build() (string, []interface{}) {
 	query := strings.Builder{}
 	args := make([]interface{}, 0)
-	query.WriteString("SELECT external_id, genre_name, russian, kind FROM genre WHERE 1=1")
+	query.WriteString("SELECT id, external_id, genre_name, russian, kind FROM genre WHERE 1=1")
 	countOfParameter := 0
 	if len(gqb.ExternalID) > 0 {
 		countOfParameter++
