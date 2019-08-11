@@ -12,6 +12,26 @@ type GenreDAO struct {
 	Db *sql.DB
 }
 
+//DeleteAll function
+func (dao *GenreDAO) DeleteAll() error {
+	tx, beginErr := dao.Db.Begin()
+	if beginErr != nil {
+		return rollbackTransaction(tx, beginErr)
+	}
+	stmt, prepareStmtErr := tx.Prepare("DELETE FROM genre")
+	if prepareStmtErr != nil {
+		return rollbackTransaction(tx, prepareStmtErr)
+	}
+	defer stmt.Close()
+	if _, stmtErr := stmt.Exec(); stmtErr != nil {
+		return rollbackTransaction(tx, stmtErr)
+	}
+	if cErr := commitTransaction(tx); cErr != nil {
+		return cErr
+	}
+	return nil
+}
+
 //FindByExternalID function
 func (dao *GenreDAO) FindByExternalID(externalID string) (*GenreDTO, error) {
 	sqlBuilder := GenreQueryBuilder{}
@@ -59,7 +79,7 @@ func (dao *GenreDAO) Create(dto GenreDTO) (int64, error) {
 	if txErr != nil {
 		return 0, txErr
 	}
-	stmt, stmtErr := tx.Prepare("INSERT INTO genre (external_id, genre_name, russian, kind) VALUES($1, $2, $3, $4)")
+	stmt, stmtErr := tx.Prepare("INSERT INTO genre (external_id, genre_name, russian, kind) VALUES($1, $2, $3, $4) RETURNING id")
 	if stmtErr != nil {
 		return 0, rollbackTransaction(tx, stmtErr)
 	}

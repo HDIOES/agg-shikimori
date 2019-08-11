@@ -12,6 +12,26 @@ type StudioDAO struct {
 	Db *sql.DB
 }
 
+//DeleteAll function
+func (dao *StudioDAO) DeleteAll() error {
+	tx, beginErr := dao.Db.Begin()
+	if beginErr != nil {
+		return rollbackTransaction(tx, beginErr)
+	}
+	stmt, prepareStmtErr := tx.Prepare("DELETE FROM studio")
+	if prepareStmtErr != nil {
+		return rollbackTransaction(tx, prepareStmtErr)
+	}
+	defer stmt.Close()
+	if _, stmtErr := stmt.Exec(); stmtErr != nil {
+		return rollbackTransaction(tx, stmtErr)
+	}
+	if cErr := commitTransaction(tx); cErr != nil {
+		return cErr
+	}
+	return nil
+}
+
 //FindByID function
 func (dao *StudioDAO) FindByID(id int64) (*StudioDTO, error) {
 	stmt, stmtErr := dao.Db.Prepare("SELECT ")
@@ -92,7 +112,7 @@ func (dao *StudioDAO) Create(dto StudioDTO) (int64, error) {
 	if txErr != nil {
 		return 0, txErr
 	}
-	stmt, stmtErr := tx.Prepare("INSERT INTO studio (external_id, studio_name, filtered_studio_name, is_real, image_url) VALUES($1, $2, $3, $4, $5)")
+	stmt, stmtErr := tx.Prepare("INSERT INTO studio (external_id, studio_name, filtered_studio_name, is_real, image_url) VALUES($1, $2, $3, $4, $5) RETURNING id")
 	if stmtErr != nil {
 		return 0, rollbackTransaction(tx, stmtErr)
 	}

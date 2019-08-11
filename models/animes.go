@@ -13,6 +13,42 @@ type AnimeDAO struct {
 	Db *sql.DB
 }
 
+//DeleteAll function
+func (dao *AnimeDAO) DeleteAll() error {
+	tx, beginErr := dao.Db.Begin()
+	if beginErr != nil {
+		return rollbackTransaction(tx, beginErr)
+	}
+	stmt1, prepareStmtErr1 := tx.Prepare("DELETE FROM anime_studio")
+	if prepareStmtErr1 != nil {
+		return rollbackTransaction(tx, prepareStmtErr1)
+	}
+	defer stmt1.Close()
+	if _, stmtErr := stmt1.Exec(); stmtErr != nil {
+		return rollbackTransaction(tx, stmtErr)
+	}
+	stmt2, prepareStmtErr2 := tx.Prepare("DELETE FROM anime_genre")
+	if prepareStmtErr2 != nil {
+		return rollbackTransaction(tx, prepareStmtErr2)
+	}
+	defer stmt2.Close()
+	if _, stmtErr := stmt2.Exec(); stmtErr != nil {
+		return rollbackTransaction(tx, stmtErr)
+	}
+	stmt3, prepareStmtErr3 := tx.Prepare("DELETE FROM anime")
+	if prepareStmtErr3 != nil {
+		return rollbackTransaction(tx, prepareStmtErr3)
+	}
+	defer stmt3.Close()
+	if _, stmtErr := stmt1.Exec(); stmtErr != nil {
+		return rollbackTransaction(tx, stmtErr)
+	}
+	if cErr := commitTransaction(tx); cErr != nil {
+		return cErr
+	}
+	return nil
+}
+
 //FindByFilter function
 func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) {
 	query, args := filter.Build()
@@ -205,11 +241,13 @@ func (dao *AnimeDAO) Create(anime AnimeDTO) (int64, error) {
 	if prepareStmtErr != nil {
 		return 0, rollbackTransaction(tx, prepareStmtErr)
 	}
+	defer stmt.Close()
 	result, stmtErr := stmt.Query(
 		anime.ExternalID,
 		anime.Name,
 		anime.Russian,
 		anime.AnimeURL,
+		anime.Kind,
 		anime.Status,
 		anime.Epizodes,
 		anime.EpizodesAired,
@@ -220,21 +258,17 @@ func (dao *AnimeDAO) Create(anime AnimeDTO) (int64, error) {
 		anime.Duration,
 		anime.Rating,
 		anime.Franchise,
-		anime.Processed,
-		anime.LastModifyTime)
+		anime.Processed)
 	if stmtErr != nil {
 		return 0, rollbackTransaction(tx, stmtErr)
 	}
+	var ID sql.NullInt64
 	if result.Next() {
-		var ID sql.NullInt64
 		result.Scan(ID)
-		result.Close()
-		if commitErr := tx.Commit(); commitErr != nil {
-			return 0, rollbackTransaction(tx, commitErr)
-		}
-		return ID.Int64, nil
 	}
-	return 0, errors.New("Error")
+	defer result.Close()
+	defer commitTransaction(tx)
+	return ID.Int64, nil
 }
 
 //LinkAnimeAndGenre function

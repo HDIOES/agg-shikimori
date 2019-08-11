@@ -10,6 +10,26 @@ type NewDAO struct {
 	Db *sql.DB
 }
 
+//DeleteAll function
+func (dao *NewDAO) DeleteAll() error {
+	tx, beginErr := dao.Db.Begin()
+	if beginErr != nil {
+		return rollbackTransaction(tx, beginErr)
+	}
+	stmt, prepareStmtErr := tx.Prepare("DELETE FROM new")
+	if prepareStmtErr != nil {
+		return rollbackTransaction(tx, prepareStmtErr)
+	}
+	defer stmt.Close()
+	if _, stmtErr := stmt.Exec(); stmtErr != nil {
+		return rollbackTransaction(tx, stmtErr)
+	}
+	if cErr := commitTransaction(tx); cErr != nil {
+		return cErr
+	}
+	return nil
+}
+
 //Find function
 func (ndao *NewDAO) Find(id int64) (*NewDTO, error) {
 	stmt, prepareStmtErr := ndao.Db.Prepare("SELECT id, name, body FROM new WHERE id = $1")
@@ -103,13 +123,6 @@ func (ndao *NewDAO) Delete(id int64) error {
 		return rollbackTransaction(tx, commitErr)
 	}
 	return nil
-}
-
-func rollbackTransaction(tx *sql.Tx, err error) error {
-	if rollErr := tx.Rollback(); rollErr != nil {
-		return rollErr
-	}
-	return err
 }
 
 //NewDTO struct
