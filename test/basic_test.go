@@ -56,16 +56,16 @@ func linkAnimeAndGenre(animeDao *models.AnimeDAO, animeID int64, genreID int64) 
 
 func insertAnimeToDatabase(
 	animeDao *models.AnimeDAO,
-	externalID,
+	externalID string,
 	animeName,
 	russian,
 	animeURL,
 	kind,
-	animeStatus string,
-	epizodes, epizodesAired int64,
-	airedOn, releasedOn time.Time,
-	posterURL string,
-	processed bool) (int64, error) {
+	animeStatus *string,
+	epizodes, epizodesAired *int64,
+	airedOn, releasedOn *time.Time,
+	posterURL *string,
+	processed *bool) (int64, error) {
 	animeDto := models.AnimeDTO{
 		Name:          animeName,
 		ExternalID:    externalID,
@@ -87,11 +87,11 @@ func insertAnimeToDatabase(
 }
 
 func insertStudioToDatabase(studioDao *models.StudioDAO,
-	externalID,
+	externalID string,
 	studioName,
-	filteredStudioName string,
-	isReal bool,
-	imageURL string) (int64, error) {
+	filteredStudioName *string,
+	isReal *bool,
+	imageURL *string) (int64, error) {
 	id, err := studioDao.Create(models.StudioDTO{
 		Name:               studioName,
 		ExternalID:         externalID,
@@ -105,7 +105,7 @@ func insertStudioToDatabase(studioDao *models.StudioDAO,
 	return id, nil
 }
 
-func insertGenreToDatabase(genreDao *models.GenreDAO, externalID, genreName, russian, kind string) (int64, error) {
+func insertGenreToDatabase(genreDao *models.GenreDAO, externalID string, genreName, russian, kind *string) (int64, error) {
 	id, err := genreDao.Create(models.GenreDTO{
 		ExternalID: externalID,
 		Name:       genreName,
@@ -118,7 +118,7 @@ func insertGenreToDatabase(genreDao *models.GenreDAO, externalID, genreName, rus
 	return id, nil
 }
 
-func insertNewToDatabase(newDao *models.NewDAO, name string, body string) (int64, error) {
+func insertNewToDatabase(newDao *models.NewDAO, name *string, body *string) (int64, error) {
 	id, err := newDao.Create(models.NewDTO{
 		Name: name,
 		Body: body,

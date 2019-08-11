@@ -17,21 +17,44 @@ import (
 func TestSearchAnimesSuccess(t *testing.T) {
 	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
 		clearDb(newDao, animeDao, genreDao, studioDao)
-		const externalGenreID string = "1"
-		const externalStudioID string = "1"
-		const externalAnimeID string = "1"
+		externalGenreID := "1"
+		externalStudioID := "1"
+		externalAnimeID := "1"
+
+		genreName := "trashcore"
+		genreRussianName := "трешкор"
+		genreKind := "tv"
+
+		studioName := "trash studio"
+		russianStudioName := "треш студия"
+		isReal := false
+		imageURL := "/url.jpg"
+
+		animeName := "One Punch Man"
+		russianAnimeName := "Один Удар Человек"
+		animeImageURL := "/url.jpg"
+		animeKind := "tv"
+		animeStatus := "ongoing"
+		animePostreURL := "/url.jpg"
+		var animeEpizodes int64 = 12
+		var animeEpizodesAired int64 = 6
+		airedOn := time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC)
+		releasedOn := time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC)
+
+		animeProcessed := false
+
 		//fill database
-		genreID, insertGenreErr := insertGenreToDatabase(genreDao, externalGenreID, "trashcore", "трешкор", "anime")
+		genreID, insertGenreErr := insertGenreToDatabase(genreDao, externalGenreID, &genreName, &genreRussianName, &genreKind)
 		if insertGenreErr != nil {
 			t.Fatal(insertGenreErr)
 		}
-		studioID, insertStudioErr := insertStudioToDatabase(studioDao, externalStudioID, "trash studio", "треш студия", true, "/url.jpg")
+		studioID, insertStudioErr := insertStudioToDatabase(studioDao, externalStudioID, &studioName, &russianStudioName, &isReal, &imageURL)
 		if insertStudioErr != nil {
 			t.Fatal(insertStudioErr)
 		}
-		animeID, insertAnimeErr := insertAnimeToDatabase(animeDao, externalAnimeID, "One Punch Man", "Один Удар Человек", "/url.jpg", "tv", "ongoing", 10, 5,
-			time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC),
-			time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC), "/url.jpg", false)
+		animeID, insertAnimeErr := insertAnimeToDatabase(animeDao, externalAnimeID, &animeName, &russianAnimeName, &animeImageURL, &animeKind, &animeStatus, &animeEpizodes, &animeEpizodesAired,
+			&airedOn,
+			&releasedOn, &animePostreURL, &animeProcessed)
 		if insertAnimeErr != nil {
 			t.Fatal(insertAnimeErr)
 		}

@@ -14,7 +14,9 @@ import (
 func TestFindNew_success(t *testing.T) {
 	diContainer.Invoke(func(router *mux.Router, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) {
 		clearDb(newDao, animeDao, genreDao, studioDao)
-		id, err := insertNewToDatabase(newDao, "hello", "body")
+		newName := "hello"
+		body := "body"
+		id, err := insertNewToDatabase(newDao, &newName, &body)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -101,8 +101,8 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 //AnimeRO is rest object
 type AnimeRO struct {
-	Name        string `json:"name"`
-	RussuanName string `json:"russian_name"`
-	URL         string `json:"url"`
-	PosterURL   string `json:"poster_url"`
+	Name        *string `json:"name"`
+	RussuanName *string `json:"russian_name"`
+	URL         *string `json:"url"`
+	PosterURL   *string `json:"poster_url"`
 }
