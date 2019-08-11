@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"database/sql"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -11,16 +10,9 @@ import (
 	"github.com/HDIOES/cpa-backend/models"
 )
 
-//CreateCreateNewHandler func
-func CreateCreateNewHandler(db *sql.DB) http.Handler {
-	dao := models.NewDAO{Db: db}
-	createNewHandler := &CreateNewHandler{dao: &dao}
-	return createNewHandler
-}
-
 //CreateNewHandler struct
 type CreateNewHandler struct {
-	dao *models.NewDAO
+	Dao *models.NewDAO
 }
 
 func (cnh *CreateNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +25,7 @@ func (cnh *CreateNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HandleErr(unmErr, w, 400, "Bad request")
 	}
 	newDto := models.NewDTO{ID: new.ID, Name: new.Name, Body: new.Body}
-	if newID, createErr := cnh.dao.Create(newDto); createErr != nil {
+	if newID, createErr := cnh.Dao.Create(newDto); createErr != nil {
 		HandleErr(createErr, w, 400, "Error")
 	} else {
 		ReturnResponseAsJSON(w, CreateNewResponse{ID: newID}, 200)
@@ -42,14 +34,7 @@ func (cnh *CreateNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 //FindNewHandler struct
 type FindNewHandler struct {
-	dao *models.NewDAO
-}
-
-//CreateFindNewHandler function
-func CreateFindNewHandler(db *sql.DB) http.Handler {
-	dao := models.NewDAO{Db: db}
-	findNewHandler := &FindNewHandler{dao: &dao}
-	return findNewHandler
+	Dao *models.NewDAO
 }
 
 func (fnh *FindNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +46,7 @@ func (fnh *FindNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if idInt64, parseErr := strconv.ParseInt(id[0], 10, 64); parseErr != nil {
 			HandleErr(parseErr, w, 400, "id not valid")
 		} else {
-			if newDTO, findErr := fnh.dao.Find(idInt64); findErr != nil {
+			if newDTO, findErr := fnh.Dao.Find(idInt64); findErr != nil {
 				HandleErr(findErr, w, 400, "Error")
 			} else {
 				ro := NewRo{ID: newDTO.ID, Name: newDTO.Name, Body: newDTO.Body}

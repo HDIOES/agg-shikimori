@@ -1,21 +1,17 @@
 package rest
 
 import (
-	"database/sql"
-	"encoding/json"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"github.com/HDIOES/cpa-backend/models"
 )
 
-func CreateStudioHandler(db *sql.DB) http.Handler {
-	studioHandler := &StudioHandler{Db: db}
-	return studioHandler
-}
-
+//StudioHandler struct
 type StudioHandler struct {
-	Db *sql.DB
+	Dao *models.StudioDAO
 }
 
 func (g *StudioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -23,50 +19,42 @@ func (g *StudioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if parseErr != nil {
 		log.Println(parseErr)
 	}
-	limit, limitOk := vars["limit"]
-	offset, offsetOk := vars["offset"]
-	//phrase, phraseOk := vars["phrase"]
-	sqlQueryString := "SELECT external_id, studio_name, filtered_studio_name FROM studio WHERE 1=1"
-	countOfParameter := 0
-	args := make([]interface{}, 0)
-	/*if phraseOk {
-		args = append(args, phrase[0])
-		countOfParameter++
-	}*/
-	if offsetOk {
-		args = append(args, offset[0])
-		countOfParameter++
-		sqlQueryString += " OFFSET $" + strconv.Itoa(countOfParameter)
+	studioSQLBuilder := models.StudioQueryBuilder{}
+	if limit, limitOk := vars["limit"]; limitOk {
+		limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32)
+		if parseErr != nil {
+			HandleErr(parseErr, w, 400, "Not valid limit")
+			return
+		}
+		studioSQLBuilder.SetOffset(int32(limitInt64))
 	}
-	if limitOk {
-		countOfParameter++
-		args = append(args, limit[0])
-		sqlQueryString += " LIMIT $" + strconv.Itoa(countOfParameter)
+	if offset, offsetOk := vars["offset"]; offsetOk {
+		offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32)
+		if parseErr != nil {
+			HandleErr(parseErr, w, 400, "Not valid offset")
+			return
+		}
+		studioSQLBuilder.SetOffset(int32(offsetInt64))
+	}
+	if studiosDtos, stErr := g.Dao.FindByFilter(studioSQLBuilder); stErr != nil {
+		HandleErr(stErr, w, 400, "Error")
 	} else {
-		sqlQueryString += " LIMIT 50"
+		studios := []StudioRo{}
+		for _, dto := range studiosDtos {
+			ro := StudioRo{
+				ID:           dto.ID,
+				Name:         dto.Name,
+				FilteredName: dto.FilteredStudioName,
+			}
+			studios = append(studios, ro)
+		}
+		ReturnResponseAsJSON(w, studios, 200)
 	}
-	rows, rowsErr := g.Db.Query(sqlQueryString, args...)
-	if rowsErr != nil {
-		log.Println(rowsErr)
-	}
-	defer rows.Close()
-	studios := []StudioRo{}
-	for rows.Next() {
-		studioRo := StudioRo{}
-		var id sql.NullString
-		var name sql.NullString
-		var filteredName sql.NullString
-		rows.Scan(&id, &name, &filteredName)
-		studioRo.ID = &id.String
-		studioRo.Name = &name.String
-		studioRo.FilteredName = &filteredName.String
-		studios = append(studios, studioRo)
-	}
-	json.NewEncoder(w).Encode(studios)
 }
 
+//StudioRo struct
 type StudioRo struct {
-	ID           *string `json:"id"`
-	Name         *string `json:"name"`
-	FilteredName *string `json:"filtered_name"`
+	ID           int64  `json:"id"`
+	Name         string `json:"name"`
+	FilteredName string `json:"filtered_name"`
 }

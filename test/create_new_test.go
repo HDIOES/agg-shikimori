@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/gorilla/mux"
+
+	"github.com/HDIOES/cpa-backend/models"
 	"github.com/HDIOES/cpa-backend/rest"
 	"github.com/stretchr/testify/assert"
 
@@ -13,19 +16,21 @@ import (
 )
 
 func TestCreateNew_success(t *testing.T) {
-	clearDb(db)
-	const Name = "Ужасная статья"
-	const Body = "Ужасная статья?"
-	requestBody := rest.NewRo{Name: Name, Body: Body}
-	reader, readErr := GetJSONBodyReader(requestBody)
-	if readErr != nil {
-		t.Fatal(readErr)
-	}
-	//create request
-	request, _ := http.NewRequest("POST", "/api/news", reader)
-	recorder := executeRequest(request)
-	//asserts
-	assert.Equal(t, 200, recorder.Code)
+	diContainer.Invoke(func(router *mux.Router, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) {
+		clearDb(newDao, animeDao, genreDao, studioDao)
+		const Name = "Ужасная статья"
+		const Body = "Ужасная статья?"
+		requestBody := rest.NewRo{Name: Name, Body: Body}
+		reader, readErr := GetJSONBodyReader(requestBody)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		//create request
+		request, _ := http.NewRequest("POST", "/api/news", reader)
+		recorder := executeRequest(request, router)
+		//asserts
+		assert.Equal(t, 200, recorder.Code)
+	})
 }
 
 //GetJsonBodyReader function

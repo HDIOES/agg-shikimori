@@ -2,29 +2,29 @@ package test
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 
+	"github.com/HDIOES/cpa-backend/models"
+
 	"github.com/gorilla/mux"
 
-	"github.com/HDIOES/cpa-backend/rest"
-	"github.com/HDIOES/cpa-backend/rest/util"
+	"go.uber.org/dig"
+
+	"github.com/HDIOES/cpa-backend/di"
 	"github.com/ory/dockertest"
 	migrate "github.com/rubenv/sql-migrate"
-	"github.com/tkanos/gonfig"
 )
 
-//TODO remove global vars!!!!
-var db *sql.DB
-var configuration *util.Configuration
-var testContainer *dockertest.Resource
-var router *mux.Router
+var diContainer *dig.Container
+
+func init() {
+	diContainer = di.CreateDI(true)
+}
 
 func TestMain(m *testing.M) {
 	//prepare test database, test configuration and test router
@@ -32,209 +32,108 @@ func TestMain(m *testing.M) {
 }
 
 func wrapperTestMain(m *testing.M) int {
-	if preparedConfiguration, err := prepareConfiguration(); err != nil {
-		panic(err)
-	} else {
-		configuration = preparedConfiguration
-	}
-	if preparedDb, preparedTestContainer, err := prepareDb(); err != nil {
-		panic(err)
-	} else {
-		defer preparedTestContainer.Close()
-		defer preparedDb.Close()
-		testContainer = preparedTestContainer
-		db = preparedDb
-	}
-	router = rest.ConfigureRouter(db, configuration)
+	defer diContainer.Invoke(func(db *sql.DB, testContainer *dockertest.Resource) {
+		db.Close()
+		testContainer.Close()
+	})
 	defer log.Print("Stopping test container")
 	return m.Run()
 }
 
-func executeRequest(req *http.Request) *httptest.ResponseRecorder {
+func executeRequest(req *http.Request, router *mux.Router) *httptest.ResponseRecorder {
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 	return rr
 }
 
-func insertAnimeToDatabase(t *testing.T,
-	externalID, animeName, russian, animeURL, kind, animeStatus string,
-	epizodes, epizodesAired int,
+func linkAnimeAndStudio(animeDao *models.AnimeDAO, animeID int64, studioID int64) error {
+	return animeDao.LinkAnimeAndStudio(animeID, studioID)
+}
+
+func linkAnimeAndGenre(animeDao *models.AnimeDAO, animeID int64, genreID int64) error {
+	return animeDao.LinkAnimeAndGenre(animeID, genreID)
+}
+
+func insertAnimeToDatabase(
+	animeDao *models.AnimeDAO,
+	externalID,
+	animeName,
+	russian,
+	animeURL,
+	kind,
+	animeStatus string,
+	epizodes, epizodesAired int64,
 	airedOn, releasedOn time.Time,
 	posterURL string,
-	processed bool,
-	externalStudioID, externalGenreID string) error {
-	tx, beginErr := db.Begin()
-	if beginErr != nil {
-		return beginErr
+	processed bool) (int64, error) {
+	animeDto := models.AnimeDTO{
+		Name:          animeName,
+		ExternalID:    externalID,
+		Russian:       russian,
+		AnimeURL:      animeURL,
+		Kind:          kind,
+		Status:        animeStatus,
+		Epizodes:      epizodes,
+		EpizodesAired: epizodesAired,
+		AiredOn:       airedOn,
+		ReleasedOn:    releasedOn,
+		PosterURL:     posterURL,
 	}
-	//insert anime
-	_, insertAnimeErr := tx.Exec("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, processed, lastmodifytime) "+
-		"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())",
-		externalID,
-		animeName,
-		russian,
-		animeURL,
-		kind,
-		animeStatus,
-		epizodes,
-		epizodesAired,
-		airedOn.Format("2006-01-02"),
-		releasedOn.Format("2006-01-02"),
-		posterURL,
-		processed)
-	if insertAnimeErr != nil {
-		return rollbackTransaction(tx, insertAnimeErr)
-	}
-	//insert anime_studio
-	_, insertAnimeStudioErr := tx.Exec("INSERT INTO anime_studio (anime_id, studio_id)"+
-		" SELECT anime.id, studio.id FROM anime JOIN studio ON anime.external_id = $1 AND studio.external_id = $2", externalID, externalStudioID)
-	if insertAnimeStudioErr != nil {
-		return rollbackTransaction(tx, insertAnimeStudioErr)
-	}
-	//insert anime_genre
-	_, insertAnimeGenreErr := tx.Exec("INSERT INTO anime_genre (anime_id, genre_id) "+
-		" SELECT anime.id, genre.id FROM anime JOIN genre ON anime.external_id = $1 AND genre.external_id = $2", externalID, externalGenreID)
-	if insertAnimeGenreErr != nil {
-		return rollbackTransaction(tx, insertAnimeGenreErr)
-	}
-	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
-	}
-	return nil
-}
-
-func insertStudioToDatabase(t *testing.T, externalID, studioName, filteredStudioName string, isReal bool, imageURL string) error {
-	tx, beginErr := db.Begin()
-	if beginErr != nil {
-		return beginErr
-	}
-	_, txErr := tx.Exec("INSERT INTO studio (external_id, studio_name, filtered_studio_name, is_real, image_url) VALUES ($1, $2, $3, $4, $5)",
-		externalID,
-		studioName,
-		filteredStudioName,
-		isReal,
-		imageURL)
-	if txErr != nil {
-		return rollbackTransaction(tx, txErr)
-	}
-	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
-	}
-	return nil
-}
-
-func insertGenreToDatabase(t *testing.T, externalID, genreName, russian, kind string) error {
-	tx, beginErr := db.Begin()
-	if beginErr != nil {
-		return beginErr
-	}
-	_, txErr :=
-		tx.Exec("INSERT INTO genre (external_id, genre_name, russian, kind) VALUES ($1, $2, $3, $4)", externalID, genreName, russian, kind)
-	if txErr != nil {
-		return rollbackTransaction(tx, txErr)
-	}
-	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
-	}
-	return nil
-}
-
-func insertNewToDatabase(t *testing.T, id int64, name string, body string) error {
-	tx, beginErr := db.Begin()
-	if beginErr != nil {
-		return beginErr
-	}
-	_, txErr :=
-		tx.Exec("INSERT INTO new (id, name, body) VALUES ($1, $2, $3)", id, name, body)
-	if txErr != nil {
-		return rollbackTransaction(tx, txErr)
-	}
-	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
-	}
-	return nil
-}
-
-func rollbackTransaction(tx *sql.Tx, err error) error {
-	if rollbackErr := tx.Rollback(); rollbackErr != nil {
-		return rollbackErr
-	}
-	return err
-}
-
-//prepareConfiguration function returns config data from file named "configuration.json"
-func prepareConfiguration() (configuration *util.Configuration, err error) {
-	configuration = &util.Configuration{}
-	gonfigErr := gonfig.GetConf("../configuration.json", configuration)
-	if gonfigErr != nil {
-		return nil, gonfigErr
-	}
-	return configuration, nil
-
-}
-
-//prepareDb function prepares data container for using in local testing
-//or uses already prepared data container in case of using docker-compose testing
-func prepareDb() (*sql.DB, *dockertest.Resource, error) {
-	//start up new test data container
-	pool, err := dockertest.NewPool("")
+	id, err := animeDao.Create(animeDto)
 	if err != nil {
-		return nil, nil, err
+		return 0, err
 	}
-	resource, rErr := pool.Run(dbType, dbVersion, []string{
-		dbUserVar,
-		dbPasswordVar,
-		dbNameVar})
-	log.Print("Starting test container...")
-	time.Sleep(10 * time.Second)
-	if rErr != nil {
-		defer resource.Close()
-		return nil, nil, rErr
-	}
-	log.Print("Port - " + resource.GetPort(dbPortMapping))
-	databaseURL := fmt.Sprintf(dbURLTemplate, resource.GetPort(dbPortMapping))
-	//create db
-	preparedDB, err := sql.Open(dbType, databaseURL)
-	if err != nil {
-		defer testContainer.Close()
-		defer preparedDB.Close()
-		return nil, nil, err
-	}
-	preparedDB.SetMaxIdleConns(configuration.MaxIdleConnections)
-	preparedDB.SetMaxOpenConns(configuration.MaxOpenConnections)
-	timeout := strconv.Itoa(configuration.ConnectionTimeout) + "s"
-	timeoutDuration, durationErr := time.ParseDuration(timeout)
-	if durationErr != nil {
-		return nil, nil, durationErr
-	}
-	preparedDB.SetConnMaxLifetime(timeoutDuration)
-	err = applyMigrations(preparedDB)
-	if err != nil {
-		return nil, nil, err
-	}
-	return preparedDB, resource, nil
+	return id, nil
 }
 
-func clearDb(db *sql.DB) error {
-	tx, txErr := db.Begin()
-	if txErr != nil {
-		return txErr
+func insertStudioToDatabase(studioDao *models.StudioDAO,
+	externalID,
+	studioName,
+	filteredStudioName string,
+	isReal bool,
+	imageURL string) (int64, error) {
+	id, err := studioDao.Create(models.StudioDTO{
+		Name:               studioName,
+		ExternalID:         externalID,
+		FilteredStudioName: filteredStudioName,
+		IsReal:             isReal,
+		ImageURL:           imageURL,
+	})
+	if err != nil {
+		return 0, err
 	}
-	if _, err := tx.Exec("DELETE FROM ANIME_STUDIO"); err != nil {
-		return rollbackTransaction(tx, err)
+	return id, nil
+}
+
+func insertGenreToDatabase(genreDao *models.GenreDAO, externalID, genreName, russian, kind string) (int64, error) {
+	id, err := genreDao.Create(models.GenreDTO{
+		ExternalID: externalID,
+		Name:       genreName,
+		Russian:    russian,
+		Kind:       kind,
+	})
+	if err != nil {
+		return 0, err
 	}
-	if _, err := tx.Exec("DELETE FROM STUDIO"); err != nil {
-		return rollbackTransaction(tx, err)
+	return id, nil
+}
+
+func insertNewToDatabase(newDao *models.NewDAO, name string, body string) (int64, error) {
+	id, err := newDao.Create(models.NewDTO{
+		Name: name,
+		Body: body,
+	})
+	if err != nil {
+		return 0, err
 	}
-	if _, err := tx.Exec("DELETE FROM ANIME_GENRE"); err != nil {
-		return rollbackTransaction(tx, err)
-	}
-	if _, err := tx.Exec("DELETE FROM ANIME"); err != nil {
-		return rollbackTransaction(tx, err)
-	}
-	if txCommitErr := tx.Commit(); txCommitErr != nil {
-		return rollbackTransaction(tx, txCommitErr)
-	}
+	return id, nil
+}
+
+func clearDb(newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) error {
+	newDao.DeleteAll()
+	genreDao.DeleteAll()
+	studioDao.DeleteAll()
+	animeDao.DeleteAll()
 	return nil
 }
 
