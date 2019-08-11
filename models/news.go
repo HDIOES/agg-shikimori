@@ -48,9 +48,9 @@ func (ndao *NewDAO) Find(id int64) (*NewDTO, error) {
 		var sqlName sql.NullString
 		var sqlBody sql.NullString
 		result.Scan(&sqlID, &sqlName, &sqlBody)
-		newDTO.ID = sqlID.Int64
-		newDTO.Name = sqlName.String
-		newDTO.Body = sqlBody.String
+		newDTO.ID = &sqlID.Int64
+		newDTO.Name = &sqlName.String
+		newDTO.Body = &sqlBody.String
 	} else {
 		return nil, errors.New("New not found")
 	}
@@ -127,7 +127,7 @@ func (ndao *NewDAO) Delete(id int64) error {
 
 //NewDTO struct
 type NewDTO struct {
-	ID   int64
-	Name string
-	Body string
+	ID   *int64
+	Name *string
+	Body *string
 }

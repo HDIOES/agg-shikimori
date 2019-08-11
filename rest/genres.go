@@ -26,7 +26,7 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			HandleErr(parseErr, w, 400, "Not valid limit")
 			return
 		}
-		genreSQLBuilder.SetOffset(int32(limitInt64))
+		genreSQLBuilder.SetLimit(int32(limitInt64))
 	}
 	if offset, offsetOk := vars["offset"]; offsetOk {
 		offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32)
@@ -45,7 +45,7 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	genres := []GenreRo{}
 	for _, genreDto := range genreDtos {
 		genreRo := GenreRo{}
-		genreRo.ID = genreDto.ExternalID
+		genreRo.ID = &genreDto.ExternalID
 		genreRo.Name = genreDto.Name
 		genreRo.Russian = genreDto.Russian
 		genreRo.Kind = genreDto.Kind
@@ -56,8 +56,8 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 //GenreRo struct
 type GenreRo struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Russian string `json:"russian"`
-	Kind    string `json:"kind"`
+	ID      *string `json:"id"`
+	Name    *string `json:"name"`
+	Russian *string `json:"russian"`
+	Kind    *string `json:"kind"`
 }
