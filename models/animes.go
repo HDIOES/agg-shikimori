@@ -21,28 +21,12 @@ func (dao *AnimeDAO) DeleteAll() error {
 	if beginErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
-	/*stmt1, prepareStmtErr1 := tx.Prepare("TRUNCATE anime_studio")
-	if prepareStmtErr1 != nil {
-		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr1, ""))
+	stmt, prepareStmtErr := tx.Prepare("TRUNCATE anime CASCADE")
+	if prepareStmtErr != nil {
+		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}
-	defer stmt1.Close()
-	if _, stmtErr := stmt<1.Exec(); stmtErr != nil {
-		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
-	}
-	stmt2, prepareStmtErr2 := tx.Prepare("DELETE FROM anime_genre")
-	if prepareStmtErr2 != nil {
-		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr2, ""))
-	}
-	defer stmt2.Close()
-	if _, stmtErr := stmt2.Exec(); stmtErr != nil {
-		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
-	}*/
-	stmt3, prepareStmtErr3 := tx.Prepare("TRUNCATE anime CASCADE")
-	if prepareStmtErr3 != nil {
-		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr3, ""))
-	}
-	defer stmt3.Close()
-	if _, stmtErr := stmt3.Exec(); stmtErr != nil {
+	defer stmt.Close()
+	if _, stmtErr := stmt.Exec(); stmtErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	if cErr := commitTransaction(tx); cErr != nil {
