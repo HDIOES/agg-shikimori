@@ -6,13 +6,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/HDIOES/cpa-backend/rest/util"
+
 	"github.com/HDIOES/cpa-backend/models"
 	"github.com/pkg/errors"
 )
 
 //SearchAnimeHandler struct
 type SearchAnimeHandler struct {
-	Dao *models.AnimeDAO
+	Dao           *models.AnimeDAO
+	Configuration *util.Configuration
 }
 
 func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +97,15 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	animeRos := []AnimeRO{}
 	for _, animeDto := range animeDtos {
-		animeRo := AnimeRO{Name: animeDto.Name, RussuanName: animeDto.Russian, URL: animeDto.AnimeURL, PosterURL: animeDto.PosterURL}
+		animeRo := AnimeRO{Name: animeDto.Name, RussuanName: animeDto.Russian}
+		if animeDto.AnimeURL != nil {
+			shikiURL := as.Configuration.ShikimoriURL + *animeDto.AnimeURL
+			animeRo.URL = &shikiURL
+		}
+		if animeDto.PosterURL != nil {
+			posterURL := as.Configuration.ShikimoriURL + *animeDto.PosterURL
+			animeRo.PosterURL = &posterURL
+		}
 		animeRos = append(animeRos, animeRo)
 	}
 	if err := ReturnResponseAsJSON(w, animeRos, 200); err != nil {

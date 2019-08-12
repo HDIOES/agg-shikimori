@@ -35,12 +35,12 @@ const dbNameVar = "POSTGRES_DB=" + dbName
 const dbURLTemplate = dbType + "://" + dbUser + ":" + dbPassword + "@localhost:%s/" + dbName + "?sslmode=disable"
 
 //CreateDI function to build di-container
-func CreateDI(test bool) *dig.Container {
+func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 	container := dig.New()
 	container.Provide(func() *util.Configuration {
 		log.Println("Loading configuration...")
 		configuration := &util.Configuration{}
-		gonfigErr := gonfig.GetConf("../configuration.json", configuration)
+		gonfigErr := gonfig.GetConf(configPath, configuration)
 		if gonfigErr != nil {
 			panic(gonfigErr)
 		}
@@ -82,7 +82,7 @@ func CreateDI(test bool) *dig.Container {
 			db.SetConnMaxLifetime(timeoutDuration)
 		}
 		migrations := &migrate.FileMigrationSource{
-			Dir: "../migrations",
+			Dir: migrationPath,
 		}
 		if n, err := migrate.Exec(db, "postgres", migrations, migrate.Up); err == nil {
 			log.Printf("Applied %d migrations!\n", n)
@@ -115,9 +115,9 @@ func CreateDI(test bool) *dig.Container {
 		genreHandler := &rest.GenreHandler{Dao: genreDao}
 		createNewHandler := &rest.CreateNewHandler{Dao: newDao}
 		findNewHandler := &rest.FindNewHandler{Dao: newDao}
-		randomAnimeHandler := &rest.RandomAnimeHandler{Dao: animeDao}
+		randomAnimeHandler := &rest.RandomAnimeHandler{Dao: animeDao, Configuration: configuration}
 		studioHandler := &rest.StudioHandler{Dao: studioDao}
-		searchAnimeHandler := &rest.SearchAnimeHandler{Dao: animeDao}
+		searchAnimeHandler := &rest.SearchAnimeHandler{Dao: animeDao, Configuration: configuration}
 		return genreHandler, createNewHandler, findNewHandler, randomAnimeHandler, studioHandler, searchAnimeHandler
 	})
 	container.Provide(func(genreHandler *rest.GenreHandler,

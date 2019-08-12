@@ -25,7 +25,7 @@ import (
 var diContainer *dig.Container
 
 func init() {
-	diContainer = di.CreateDI(true)
+	diContainer = di.CreateDI("../configuration.json", "../migrations", true)
 }
 
 func TestMain(m *testing.M) {

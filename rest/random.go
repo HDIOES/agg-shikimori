@@ -8,12 +8,14 @@ import (
 	"strings"
 
 	"github.com/HDIOES/cpa-backend/models"
+	"github.com/HDIOES/cpa-backend/rest/util"
 	"github.com/pkg/errors"
 )
 
 //RandomAnimeHandler struct
 type RandomAnimeHandler struct {
-	Dao *models.AnimeDAO
+	Dao           *models.AnimeDAO
+	Configuration *util.Configuration
 }
 
 func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -81,12 +83,21 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	animeSQLBuilder.SetCountOnly(false)
 	animeSQLBuilder.SetRowNumber(rand.Int63n(countOfAnimes + 1))
-	animeRO, err := rah.Dao.GetRandomAnime(animeSQLBuilder)
+	animeDto, err := rah.Dao.GetRandomAnime(animeSQLBuilder)
 	if err != nil {
 		HandleErr(errors.Wrap(err, ""), w, 400, "Internal error")
 		return
 	}
-	if err := ReturnResponseAsJSON(w, animeRO, 200); err != nil {
+	animeRo := AnimeRO{Name: animeDto.Name, RussuanName: animeDto.Russian, PosterURL: animeDto.PosterURL}
+	if animeDto.AnimeURL != nil {
+		shikiURL := rah.Configuration.ShikimoriURL + *animeDto.AnimeURL
+		animeRo.URL = &shikiURL
+	}
+	if animeDto.PosterURL != nil {
+		posterURL := rah.Configuration.ShikimoriURL + *animeDto.PosterURL
+		animeRo.PosterURL = &posterURL
+	}
+	if err := ReturnResponseAsJSON(w, animeRo, 200); err != nil {
 		HandleErr(errors.Wrap(err, ""), w, 500, "Error")
 	}
 }

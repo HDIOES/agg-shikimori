@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/gorilla/mux"
 
@@ -21,12 +22,13 @@ import (
 )
 
 //CreateDI function to build new DI container
-
 func main() {
 	log.Println("Application has been runned")
-
-	di := di.CreateDI("configuration.json", false)
-
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "configuration.json"
+	}
+	di := di.CreateDI(configPath, "migrations", false)
 	di.Invoke(func(job *integration.ShikimoriJob) {
 		cronRunner := cron.New()
 		cronRunner.AddJob("@daily", job)
