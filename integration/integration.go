@@ -13,6 +13,15 @@ import (
 	"github.com/HDIOES/cpa-backend/models"
 
 	"github.com/HDIOES/cpa-backend/rest/util"
+	"github.com/pkg/errors"
+)
+
+const (
+	shikimoriError          = "Connection to shikimori error"
+	readBytesError          = "Read bytes error"
+	unmarshalError          = "Json unmarshal error"
+	parseErrorMessage       = "Parse error"
+	animeUpdateErrorMessage = "Anime update error"
 )
 
 //ShikimoriJob struct
@@ -29,12 +38,12 @@ func (sj *ShikimoriJob) Run() {
 	client := &http.Client{}
 	//at start we need to load studios and genres
 	if processStudioErr := sj.ProcessStudios(client); processStudioErr != nil {
-		log.Print("Studios processing error", processStudioErr)
+		util.HandleError(processStudioErr)
 		return
 	}
 	time.Sleep(1000 * time.Millisecond)
 	if processGenresErr := sj.ProcessGenres(client); processGenresErr != nil {
-		log.Print("Genres processing error", processGenresErr)
+		util.HandleError(processGenresErr)
 		return
 	}
 	time.Sleep(1000 * time.Millisecond)
@@ -44,7 +53,7 @@ func (sj *ShikimoriJob) Run() {
 	for len(animes) == 50 || page == 1 {
 		animesPatch, animesErr := sj.ProcessAnimePatch(page, client)
 		if animesErr != nil {
-			log.Print("Error anime patch processing", animesErr)
+			util.HandleError(animesErr)
 		}
 		animes = animesPatch
 		page++
@@ -53,13 +62,13 @@ func (sj *ShikimoriJob) Run() {
 	//then we need to run long loading of animes by call url '/api/animes/:id'
 	var animesDtos, err = sj.GetNotProcessedExternalAnimes()
 	if err != nil {
-		log.Println("Error getting of anime ids: ", err)
+		util.HandleError(err)
 		return
 	}
 	for _, animeDto := range animesDtos {
 		processOneAmineErr := sj.ProcessOneAnime(client, animeDto)
 		if processOneAmineErr != nil {
-			log.Println("Error getting of anime: ", processOneAmineErr)
+			util.HandleError(processOneAmineErr)
 		}
 		time.Sleep(1000 * time.Millisecond)
 	}
@@ -71,7 +80,7 @@ func (sj *ShikimoriJob) GetNotProcessedExternalAnimes() ([]models.AnimeDTO, erro
 	sqlBuilder.SetProcessed(false)
 	animeDtos, getAnimeDtosErr := sj.AnimeDao.FindByFilter(sqlBuilder)
 	if getAnimeDtosErr != nil {
-		return nil, getAnimeDtosErr
+		return nil, errors.Wrap(getAnimeDtosErr, "FindByFilter error")
 	}
 	return animeDtos, nil
 }
@@ -81,24 +90,26 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, animeDto models.Ani
 	log.Println("Now we will process anime with external_id = " + animeDto.ExternalID)
 	resp, getAnimeByIDErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriAnimeSearchURL + "/" + animeDto.ExternalID)
 	if getAnimeByIDErr != nil {
-		return getAnimeByIDErr
+		return errors.Wrap(getAnimeByIDErr, shikimoriError)
 	}
 	defer resp.Body.Close()
 	anime := Anime{}
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
 	if readStudiosErr != nil {
-		return readStudiosErr
+		return errors.Wrap(readStudiosErr, readBytesError)
 	}
 	log.Println("Response body: ", string(body))
 	parseError := json.Unmarshal(body, &anime)
 	if parseError != nil {
-		return parseError
+		return errors.Wrap(parseError, unmarshalError)
 	}
 	animeDto.Rating = anime.Rating
 	if anime.Score != nil {
 		score, parseErr := strconv.ParseFloat(*anime.Score, 64)
 		if parseErr == nil {
 			animeDto.Score = &score
+		} else {
+			util.HandleError(errors.Wrap(parseErr, parseErrorMessage))
 		}
 	}
 	animeDto.Franchise = anime.Franchise
@@ -109,26 +120,26 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, animeDto models.Ani
 	//then we need to update row in database
 	updateErr := sj.AnimeDao.Update(animeDto)
 	if updateErr != nil {
-		return updateErr
+		return errors.Wrap(updateErr, animeUpdateErrorMessage)
 	}
 	//and now let go to set genre for anime
 	for _, g := range *anime.Genres {
 		genreDto, genreDtoErr := sj.GenreDao.FindByExternalID(strconv.FormatInt(*g.ID, 10))
 		if genreDtoErr != nil {
-			return genreDtoErr
+			return errors.Wrap(genreDtoErr, "")
 		}
 		if linkErr := sj.AnimeDao.LinkAnimeAndGenre(animeDto.ID, genreDto.ID); linkErr != nil {
-			return linkErr
+			return errors.Wrap(linkErr, "")
 		}
 	}
 	//let go to set studio for anime
 	for _, s := range *anime.Studios {
 		studioDto, studioDtoErr := sj.StudioDao.FindByExternalID(strconv.FormatInt(*s.ID, 10))
 		if studioDtoErr != nil {
-			return studioDtoErr
+			return errors.Wrap(studioDtoErr, "")
 		}
 		if linkErr := sj.AnimeDao.LinkAnimeAndStudio(animeDto.ID, studioDto.ID); linkErr != nil {
-			return linkErr
+			return errors.Wrap(linkErr, "")
 		}
 	}
 	log.Println("Anime has been processed")
@@ -140,16 +151,16 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 	genres := []Genre{}
 	resp, getGenresErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriGenreURL)
 	if getGenresErr != nil {
-		return getGenresErr
+		return errors.Wrap(getGenresErr, "")
 	}
 	defer resp.Body.Close()
 	body, readGenresErr := ioutil.ReadAll(resp.Body)
 	if readGenresErr != nil {
-		return readGenresErr
+		return errors.Wrap(readGenresErr, "")
 	}
 	parseGenresError := json.Unmarshal(body, &genres)
 	if parseGenresError != nil {
-		return parseGenresError
+		return errors.Wrap(parseGenresError, "")
 	}
 	for _, genre := range genres {
 		externalID := strconv.FormatInt(*genre.ID, 10)
@@ -163,13 +174,13 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 		if genreNotFound {
 			_, createErr := sj.GenreDao.Create(dto)
 			if createErr != nil {
-				return createErr
+				return errors.Wrap(createErr, "")
 			}
 		} else {
 			dto.ID = genreDto.ID
 			updateErr := sj.GenreDao.Update(dto)
 			if updateErr != nil {
-				return updateErr
+				return errors.Wrap(updateErr, "")
 			}
 		}
 	}
@@ -182,16 +193,16 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 	studios := []Studio{}
 	resp, getStudioErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriStudioURL)
 	if getStudioErr != nil {
-		return getStudioErr
+		return errors.Wrap(getStudioErr, shikimoriError)
 	}
 	defer resp.Body.Close()
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
 	if readStudiosErr != nil {
-		return readStudiosErr
+		return errors.Wrap(getStudioErr, readBytesError)
 	}
 	parseError := json.Unmarshal(body, &studios)
 	if parseError != nil {
-		return parseError
+		return errors.Wrap(parseError, unmarshalError)
 	}
 	for _, shikiStudio := range studios {
 		externalID := strconv.FormatInt(*shikiStudio.ID, 10)
@@ -206,12 +217,12 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 		}
 		if studioNotFound {
 			if _, createErr := sj.StudioDao.Create(dto); createErr != nil {
-				return createErr
+				return errors.Wrap(createErr, "")
 			}
 		} else {
 			dto.ID = studioDto.ID
 			if updateErr := sj.StudioDao.Update(dto); updateErr != nil {
-				return updateErr
+				return errors.Wrap(updateErr, "")
 			}
 		}
 	}
@@ -224,16 +235,16 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) ([]An
 	animes := []Anime{}
 	resp, animesGetErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriAnimeSearchURL + "?page=" + strconv.FormatInt(page, 10) + "&limit=50")
 	if animesGetErr != nil {
-		return nil, animesGetErr
+		return nil, errors.Wrap(animesGetErr, "")
 	}
 	defer resp.Body.Close()
 	body, readAnimesErr := ioutil.ReadAll(resp.Body)
 	if readAnimesErr != nil {
-		return nil, readAnimesErr
+		return nil, errors.Wrap(readAnimesErr, "")
 	}
 	parseAnimesError := json.Unmarshal(body, &animes)
 	if parseAnimesError != nil {
-		return nil, parseAnimesError
+		return nil, errors.Wrap(parseAnimesError, "")
 	}
 	for _, anime := range animes {
 		animeDto, animeDtoErr := sj.AnimeDao.FindByExternalID(strconv.FormatInt(*anime.ID, 10))
@@ -261,12 +272,12 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) ([]An
 		animeNotFound := strings.Compare(animeDtoErr.Error(), "Anime not found") == 0
 		if animeNotFound {
 			if _, createErr := sj.AnimeDao.Create(dto); createErr != nil {
-				return nil, createErr
+				return nil, errors.Wrap(createErr, "")
 			}
 		} else {
 			dto.ID = animeDto.ID
 			if updateErr := sj.AnimeDao.Update(dto); updateErr != nil {
-				return nil, updateErr
+				return nil, errors.Wrap(updateErr, "")
 			}
 		}
 	}
@@ -391,7 +402,7 @@ func (sts *ShikimoriTime) UnmarshalJSON(b []byte) (err error) {
 		t, err = time.Parse("2006-01-02T15:04:05.999999999Z0700", s)
 	}
 	sts.Time = t
-	return err
+	return errors.Wrap(err, "")
 }
 
 func (sts *ShikimoriTime) toDateValue() *string {

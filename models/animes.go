@@ -2,10 +2,12 @@ package models
 
 import (
 	"database/sql"
-	"errors"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/HDIOES/cpa-backend/rest/util"
+	"github.com/pkg/errors"
 )
 
 //AnimeDAO struct
@@ -17,31 +19,31 @@ type AnimeDAO struct {
 func (dao *AnimeDAO) DeleteAll() error {
 	tx, beginErr := dao.Db.Begin()
 	if beginErr != nil {
-		return rollbackTransaction(tx, beginErr)
+		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
 	stmt1, prepareStmtErr1 := tx.Prepare("DELETE FROM anime_studio")
 	if prepareStmtErr1 != nil {
-		return rollbackTransaction(tx, prepareStmtErr1)
+		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr1, ""))
 	}
 	defer stmt1.Close()
 	if _, stmtErr := stmt1.Exec(); stmtErr != nil {
-		return rollbackTransaction(tx, stmtErr)
+		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	stmt2, prepareStmtErr2 := tx.Prepare("DELETE FROM anime_genre")
 	if prepareStmtErr2 != nil {
-		return rollbackTransaction(tx, prepareStmtErr2)
+		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr2, ""))
 	}
 	defer stmt2.Close()
 	if _, stmtErr := stmt2.Exec(); stmtErr != nil {
-		return rollbackTransaction(tx, stmtErr)
+		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	stmt3, prepareStmtErr3 := tx.Prepare("DELETE FROM anime")
 	if prepareStmtErr3 != nil {
-		return rollbackTransaction(tx, prepareStmtErr3)
+		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr3, ""))
 	}
 	defer stmt3.Close()
 	if _, stmtErr := stmt1.Exec(); stmtErr != nil {
-		return rollbackTransaction(tx, stmtErr)
+		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	if cErr := commitTransaction(tx); cErr != nil {
 		return cErr
@@ -54,12 +56,12 @@ func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) 
 	query, args := filter.Build()
 	stmt, prepareStmtErr := dao.Db.Prepare(query)
 	if prepareStmtErr != nil {
-		return nil, prepareStmtErr
+		return nil, errors.Wrap(prepareStmtErr, "")
 	}
 	defer stmt.Close()
 	result, stmtErr := stmt.Query(args...)
 	if stmtErr != nil {
-		return nil, stmtErr
+		return nil, errors.Wrap(stmtErr, "")
 	}
 	defer result.Close()
 	dtos := []AnimeDTO{}
@@ -111,12 +113,14 @@ func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) 
 		animeDto.EpizodesAired = &epizodesAired.Int64
 		airedOnTime, parseTimeErr := parseTime(airedOn.String)
 		if parseTimeErr != nil {
+			util.HandleError(parseTimeErr)
 			animeDto.AiredOn = nil
 		} else {
 			animeDto.AiredOn = &airedOnTime
 		}
 		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
 		if parseTimeErr != nil {
+			util.HandleError(parseTimeErr)
 			animeDto.ReleasedOn = nil
 		} else {
 			animeDto.ReleasedOn = &releasedOnTime
@@ -139,7 +143,7 @@ func (dao *AnimeDAO) FindByExternalID(externalID string) (*AnimeDTO, error) {
 	dao.FindByFilter(sqlBuilder)
 	animeDtos, findErr := dao.FindByFilter(sqlBuilder)
 	if findErr != nil {
-		return nil, findErr
+		return nil, errors.Wrap(findErr, "")
 	}
 	if len(animeDtos) > 0 {
 		return &animeDtos[0], nil
@@ -151,12 +155,12 @@ func (dao *AnimeDAO) FindByExternalID(externalID string) (*AnimeDTO, error) {
 func (dao *AnimeDAO) FindByID(ID int64) (*AnimeDTO, error) {
 	stmt, prepareStmtErr := dao.Db.Prepare("SELECT id, name, external_id, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, score, duration, rating, franchase FROM anime WHERE id = $1")
 	if prepareStmtErr != nil {
-		return nil, prepareStmtErr
+		return nil, errors.Wrap(prepareStmtErr, "")
 	}
 	defer stmt.Close()
 	result, stmtErr := stmt.Query(ID)
 	if stmtErr != nil {
-		return nil, stmtErr
+		return nil, errors.Wrap(stmtErr, "")
 	}
 	defer result.Close()
 	dto := AnimeDTO{}
@@ -207,12 +211,14 @@ func (dao *AnimeDAO) FindByID(ID int64) (*AnimeDTO, error) {
 		animeDto.EpizodesAired = &epizodesAired.Int64
 		airedOnTime, parseTimeErr := parseTime(airedOn.String)
 		if parseTimeErr != nil {
+			util.HandleError(parseTimeErr)
 			animeDto.AiredOn = nil
 		} else {
 			animeDto.AiredOn = &airedOnTime
 		}
 		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
 		if parseTimeErr != nil {
+			util.HandleError(parseTimeErr)
 			animeDto.ReleasedOn = nil
 		} else {
 			animeDto.ReleasedOn = &releasedOnTime
@@ -235,11 +241,11 @@ func parseTime(value string) (time.Time, error) {
 func (dao *AnimeDAO) Create(anime AnimeDTO) (int64, error) {
 	tx, beginErr := dao.Db.Begin()
 	if beginErr != nil {
-		return 0, rollbackTransaction(tx, beginErr)
+		return 0, rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
 	stmt, prepareStmtErr := tx.Prepare("INSERT INTO anime (external_id, name, russian, amine_url, kind, anime_status, epizodes, epizodes_aired, aired_on, released_on, poster_url, score, duration, rating, franchase, processed, lastmodifytime) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, now()) RETURNING id")
 	if prepareStmtErr != nil {
-		return 0, rollbackTransaction(tx, prepareStmtErr)
+		return 0, rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}
 	defer stmt.Close()
 	result, stmtErr := stmt.Query(
@@ -260,7 +266,7 @@ func (dao *AnimeDAO) Create(anime AnimeDTO) (int64, error) {
 		anime.Franchise,
 		anime.Processed)
 	if stmtErr != nil {
-		return 0, rollbackTransaction(tx, stmtErr)
+		return 0, rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	var ID sql.NullInt64
 	if result.Next() {
@@ -275,19 +281,19 @@ func (dao *AnimeDAO) Create(anime AnimeDTO) (int64, error) {
 func (dao *AnimeDAO) LinkAnimeAndGenre(animeID int64, genreID int64) error {
 	tx, beginErr := dao.Db.Begin()
 	if beginErr != nil {
-		return rollbackTransaction(tx, beginErr)
+		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
 	stmt, prepareStmtErr := tx.Prepare("INSERT INTO anime_genre (anime_id, genre_id) VALUES($1, $2)")
 	if prepareStmtErr != nil {
-		return rollbackTransaction(tx, prepareStmtErr)
+		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}
 	defer stmt.Close()
 	_, execErr := stmt.Exec(animeID, genreID)
 	if execErr != nil {
-		return rollbackTransaction(tx, execErr)
+		return rollbackTransaction(tx, errors.Wrap(execErr, ""))
 	}
 	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
+		return rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return nil
 }
@@ -296,19 +302,19 @@ func (dao *AnimeDAO) LinkAnimeAndGenre(animeID int64, genreID int64) error {
 func (dao *AnimeDAO) LinkAnimeAndStudio(animeID int64, studioID int64) error {
 	tx, beginErr := dao.Db.Begin()
 	if beginErr != nil {
-		return rollbackTransaction(tx, beginErr)
+		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
 	stmt, prepareStmtErr := tx.Prepare("INSERT INTO anime_studio (anime_id, studio_id) VALUES($1, $2)")
 	if prepareStmtErr != nil {
-		return rollbackTransaction(tx, prepareStmtErr)
+		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}
 	defer stmt.Close()
 	_, execErr := stmt.Exec(animeID, studioID)
 	if execErr != nil {
-		return rollbackTransaction(tx, execErr)
+		return rollbackTransaction(tx, errors.Wrap(execErr, ""))
 	}
 	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
+		return rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return nil
 }
@@ -317,7 +323,7 @@ func (dao *AnimeDAO) LinkAnimeAndStudio(animeID int64, studioID int64) error {
 func (dao *AnimeDAO) Update(anime AnimeDTO) error {
 	tx, beginErr := dao.Db.Begin()
 	if beginErr != nil {
-		return rollbackTransaction(tx, beginErr)
+		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
 	queryBuilder := strings.Builder{}
 	queryBuilder.WriteString("UPDATE anime ")
@@ -341,7 +347,7 @@ func (dao *AnimeDAO) Update(anime AnimeDTO) error {
 	queryBuilder.WriteString("WHERE id = $17")
 	stmt, prepareStmtErr := tx.Prepare(queryBuilder.String())
 	if prepareStmtErr != nil {
-		return rollbackTransaction(tx, prepareStmtErr)
+		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}
 	_, stmtErr := stmt.Exec(
 		anime.ExternalID,
@@ -362,10 +368,10 @@ func (dao *AnimeDAO) Update(anime AnimeDTO) error {
 		anime.Processed,
 		anime.ID)
 	if stmtErr != nil {
-		return rollbackTransaction(tx, stmtErr)
+		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
+		return rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return nil
 }
@@ -375,12 +381,12 @@ func (dao *AnimeDAO) GetCount(sqlBuilder AnimeQueryBuilder) (int64, error) {
 	sqlQuery, args := sqlBuilder.Build()
 	stmt, prepareStmtErr := dao.Db.Prepare(sqlQuery)
 	if prepareStmtErr != nil {
-		return 0, prepareStmtErr
+		return 0, errors.Wrap(prepareStmtErr, "")
 	}
 	defer stmt.Close()
 	result, queryErr := stmt.Query(args...)
 	if queryErr != nil {
-		return 0, queryErr
+		return 0, errors.Wrap(queryErr, "")
 	}
 	defer result.Close()
 	if result.Next() {
@@ -396,12 +402,12 @@ func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, er
 	query, args := sqlBuilder.Build()
 	stmt, prepareStmtErr := dao.Db.Prepare(query)
 	if prepareStmtErr != nil {
-		return nil, prepareStmtErr
+		return nil, errors.Wrap(prepareStmtErr, "")
 	}
 	defer stmt.Close()
 	result, stmtErr := stmt.Query(args...)
 	if stmtErr != nil {
-		return nil, stmtErr
+		return nil, errors.Wrap(stmtErr, "")
 	}
 	defer result.Close()
 	animeDto := AnimeDTO{}
@@ -451,11 +457,13 @@ func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, er
 		animeDto.EpizodesAired = &epizodesAired.Int64
 		airedOnTime, parseTimeErr := parseTime(airedOn.String)
 		if parseTimeErr != nil {
+			util.HandleError(parseTimeErr)
 			return nil, parseTimeErr
 		}
 		animeDto.AiredOn = &airedOnTime
 		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
 		if parseTimeErr != nil {
+			util.HandleError(parseTimeErr)
 			return nil, parseTimeErr
 		}
 		animeDto.ReleasedOn = &releasedOnTime

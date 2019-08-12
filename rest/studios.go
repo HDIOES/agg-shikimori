@@ -1,12 +1,12 @@
 package rest
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 
 	"github.com/HDIOES/cpa-backend/models"
+	"github.com/pkg/errors"
 )
 
 //StudioHandler struct
@@ -17,13 +17,13 @@ type StudioHandler struct {
 func (g *StudioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars, parseErr := url.ParseQuery(r.URL.RawQuery)
 	if parseErr != nil {
-		log.Println(parseErr)
+		HandleErr(errors.Wrap(parseErr, ""), w, 400, "URL not valid")
 	}
 	studioSQLBuilder := models.StudioQueryBuilder{}
 	if limit, limitOk := vars["limit"]; limitOk {
 		limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32)
 		if parseErr != nil {
-			HandleErr(parseErr, w, 400, "Not valid limit")
+			HandleErr(errors.Wrap(parseErr, ""), w, 400, "Not valid limit")
 			return
 		}
 		studioSQLBuilder.SetOffset(int32(limitInt64))
@@ -31,7 +31,7 @@ func (g *StudioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if offset, offsetOk := vars["offset"]; offsetOk {
 		offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32)
 		if parseErr != nil {
-			HandleErr(parseErr, w, 400, "Not valid offset")
+			HandleErr(errors.Wrap(parseErr, ""), w, 400, "Not valid offset")
 			return
 		}
 		studioSQLBuilder.SetOffset(int32(offsetInt64))
@@ -48,7 +48,9 @@ func (g *StudioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			studios = append(studios, ro)
 		}
-		ReturnResponseAsJSON(w, studios, 200)
+		if err := ReturnResponseAsJSON(w, studios, 200); err != nil {
+			HandleErr(err, w, 500, "Error")
+		}
 	}
 }
 

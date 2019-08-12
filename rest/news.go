@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/HDIOES/cpa-backend/models"
+	"github.com/pkg/errors"
 )
 
 //CreateNewHandler struct
@@ -18,17 +19,19 @@ type CreateNewHandler struct {
 func (cnh *CreateNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, ioErr := ioutil.ReadAll(r.Body)
 	if ioErr != nil {
-		HandleErr(ioErr, w, 400, "Bad request")
+		HandleErr(errors.Wrap(ioErr, ""), w, 400, "Bad request")
 	}
 	new := &NewRo{}
 	if unmErr := json.Unmarshal(body, new); unmErr != nil {
-		HandleErr(unmErr, w, 400, "Bad request")
+		HandleErr(errors.Wrap(unmErr, ""), w, 400, "Bad request")
 	}
 	newDto := models.NewDTO{ID: new.ID, Name: new.Name, Body: new.Body}
 	if newID, createErr := cnh.Dao.Create(newDto); createErr != nil {
-		HandleErr(createErr, w, 400, "Error")
+		HandleErr(errors.Wrap(createErr, ""), w, 400, "Error")
 	} else {
-		ReturnResponseAsJSON(w, CreateNewResponse{ID: &newID}, 200)
+		if err := ReturnResponseAsJSON(w, CreateNewResponse{ID: &newID}, 200); err != nil {
+			HandleErr(errors.Wrap(createErr, ""), w, 500, "Error")
+		}
 	}
 }
 

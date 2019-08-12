@@ -1,13 +1,13 @@
 package rest
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/HDIOES/cpa-backend/models"
+	"github.com/pkg/errors"
 )
 
 //SearchAnimeHandler struct
@@ -18,7 +18,8 @@ type SearchAnimeHandler struct {
 func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars, parseErr := url.ParseQuery(r.URL.RawQuery)
 	if parseErr != nil {
-		log.Println(parseErr)
+		HandleErr(errors.Wrap(parseErr, ""), w, 400, "Url not valid")
+		return
 	}
 	animeSQLBuilder := models.AnimeQueryBuilder{}
 	if status, statusOk := vars["status"]; statusOk {
@@ -36,7 +37,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if score, scoreOk := vars["score"]; scoreOk {
 		scoreInt64, parseErr := strconv.ParseInt(score[0], 10, 32)
 		if parseErr != nil {
-			HandleErr(parseErr, w, 400, "Score not valid")
+			HandleErr(errors.Wrap(parseErr, ""), w, 400, "Score not valid")
 			return
 		}
 		animeSQLBuilder.SetScore(int32(scoreInt64))
@@ -73,7 +74,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if limit, limitOk := vars["limit"]; limitOk {
 		limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32)
 		if parseErr != nil {
-			HandleErr(parseErr, w, 400, "Limit not valid")
+			HandleErr(errors.Wrap(parseErr, ""), w, 400, "Limit not valid")
 			return
 		}
 		animeSQLBuilder.SetLimit(int32(limitInt64))
@@ -81,14 +82,14 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if offset, offsetOk := vars["offset"]; offsetOk {
 		offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32)
 		if parseErr != nil {
-			HandleErr(parseErr, w, 400, "Offset not valid")
+			HandleErr(errors.Wrap(parseErr, ""), w, 400, "Offset not valid")
 			return
 		}
 		animeSQLBuilder.SetLimit(int32(offsetInt64))
 	}
 	animeDtos, err := as.Dao.FindByFilter(animeSQLBuilder)
 	if err != nil {
-		HandleErr(err, w, 400, "Error")
+		HandleErr(errors.Wrap(err, ""), w, 400, "Error")
 		return
 	}
 	animeRos := []AnimeRO{}
@@ -96,7 +97,9 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		animeRo := AnimeRO{Name: animeDto.Name, RussuanName: animeDto.Russian, URL: animeDto.AnimeURL, PosterURL: animeDto.PosterURL}
 		animeRos = append(animeRos, animeRo)
 	}
-	ReturnResponseAsJSON(w, animeRos, 200)
+	if err := ReturnResponseAsJSON(w, animeRos, 200); err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 500, "Error")
+	}
 }
 
 //AnimeRO is rest object

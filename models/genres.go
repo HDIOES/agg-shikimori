@@ -2,9 +2,10 @@ package models
 
 import (
 	"database/sql"
-	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 //GenreDAO struct
@@ -16,18 +17,18 @@ type GenreDAO struct {
 func (dao *GenreDAO) DeleteAll() error {
 	tx, beginErr := dao.Db.Begin()
 	if beginErr != nil {
-		return rollbackTransaction(tx, beginErr)
+		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
 	stmt, prepareStmtErr := tx.Prepare("DELETE FROM genre")
 	if prepareStmtErr != nil {
-		return rollbackTransaction(tx, prepareStmtErr)
+		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}
 	defer stmt.Close()
 	if _, stmtErr := stmt.Exec(); stmtErr != nil {
-		return rollbackTransaction(tx, stmtErr)
+		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	if cErr := commitTransaction(tx); cErr != nil {
-		return cErr
+		return errors.Wrap(cErr, "")
 	}
 	return nil
 }
@@ -38,7 +39,7 @@ func (dao *GenreDAO) FindByExternalID(externalID string) (*GenreDTO, error) {
 	sqlBuilder.SetExternalID(externalID)
 	genreDtos, err := dao.FindByFilter(sqlBuilder)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "")
 	}
 	if len(genreDtos) > 0 {
 		return &genreDtos[0], nil
@@ -51,12 +52,12 @@ func (dao *GenreDAO) FindByFilter(sqlBuilder GenreQueryBuilder) ([]GenreDTO, err
 	query, args := sqlBuilder.Build()
 	stmt, stmtErr := dao.Db.Prepare(query)
 	if stmtErr != nil {
-		return nil, stmtErr
+		return nil, errors.Wrap(stmtErr, "")
 	}
 	defer stmt.Close()
 	result, resultErr := stmt.Query(args...)
 	if resultErr != nil {
-		return nil, resultErr
+		return nil, errors.Wrap(resultErr, "")
 	}
 	defer result.Close()
 	dtos := []GenreDTO{}
@@ -77,16 +78,16 @@ func (dao *GenreDAO) FindByFilter(sqlBuilder GenreQueryBuilder) ([]GenreDTO, err
 func (dao *GenreDAO) Create(dto GenreDTO) (int64, error) {
 	tx, txErr := dao.Db.Begin()
 	if txErr != nil {
-		return 0, txErr
+		return 0, errors.Wrap(txErr, "")
 	}
 	stmt, stmtErr := tx.Prepare("INSERT INTO genre (external_id, genre_name, russian, kind) VALUES($1, $2, $3, $4) RETURNING id")
 	if stmtErr != nil {
-		return 0, rollbackTransaction(tx, stmtErr)
+		return 0, rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	defer stmt.Close()
 	result, resultErr := stmt.Query(dto.ExternalID, dto.Name, dto.Russian, dto.Kind)
 	if resultErr != nil {
-		return 0, rollbackTransaction(tx, resultErr)
+		return 0, rollbackTransaction(tx, errors.Wrap(resultErr, ""))
 	}
 	var ID sql.NullInt64
 	if result.Next() {
@@ -97,7 +98,7 @@ func (dao *GenreDAO) Create(dto GenreDTO) (int64, error) {
 	}
 	result.Close()
 	if commitErr := tx.Commit(); commitErr != nil {
-		return 0, rollbackTransaction(tx, commitErr)
+		return 0, rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return ID.Int64, nil
 }
@@ -106,19 +107,19 @@ func (dao *GenreDAO) Create(dto GenreDTO) (int64, error) {
 func (dao *GenreDAO) Update(dto GenreDTO) error {
 	tx, txErr := dao.Db.Begin()
 	if txErr != nil {
-		return txErr
+		return errors.Wrap(txErr, "")
 	}
 	stmt, stmtErr := tx.Prepare("UPDATE genre SET external_id = $1, SET genre_name = $2, SET russian = $3, SET kind = $4 WHERE id = $5")
 	if stmtErr != nil {
-		return rollbackTransaction(tx, stmtErr)
+		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	defer stmt.Close()
 	_, resultErr := stmt.Exec(dto.ExternalID, dto.Name, dto.Russian, dto.Kind, dto.ID)
 	if resultErr != nil {
-		return rollbackTransaction(tx, resultErr)
+		return rollbackTransaction(tx, errors.Wrap(resultErr, ""))
 	}
 	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
+		return rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return nil
 }

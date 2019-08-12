@@ -1,17 +1,21 @@
 package models
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"github.com/pkg/errors"
+)
 
 func commitTransaction(tx *sql.Tx) error {
 	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
+		return rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return nil
 }
 
 func rollbackTransaction(tx *sql.Tx, err error) error {
 	if rollErr := tx.Rollback(); rollErr != nil {
-		return rollErr
+		return errors.Wrap(rollErr, "")
 	}
-	return err
+	return errors.Wrap(err, "")
 }
