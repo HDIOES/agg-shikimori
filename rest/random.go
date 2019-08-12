@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -9,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/HDIOES/cpa-backend/models"
+	"github.com/pkg/errors"
 )
 
 //RandomAnimeHandler struct
@@ -19,7 +19,8 @@ type RandomAnimeHandler struct {
 func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars, parseErr := url.ParseQuery(r.URL.RawQuery)
 	if parseErr != nil {
-		log.Println(parseErr)
+		HandleErr(errors.Wrap(parseErr, ""), w, 400, "URL not valid")
+		return
 	}
 	animeSQLBuilder := models.AnimeQueryBuilder{}
 	if status, statusOk := vars["status"]; statusOk {
@@ -37,7 +38,7 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if score, scoreOk := vars["score"]; scoreOk {
 		scoreInt64, parseErr := strconv.ParseInt(score[0], 10, 32)
 		if parseErr != nil {
-			HandleErr(parseErr, w, 400, "Score not valid")
+			HandleErr(errors.Wrap(parseErr, ""), w, 400, "Score not valid")
 			return
 		}
 		animeSQLBuilder.SetScore(int32(scoreInt64))
@@ -75,15 +76,17 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	animeSQLBuilder.SetRowNumber(0)
 	countOfAnimes, err := rah.Dao.GetCount(animeSQLBuilder)
 	if err != nil {
-		HandleErr(parseErr, w, 400, "Internal error")
+		HandleErr(errors.Wrap(err, ""), w, 400, "Internal error")
 		return
 	}
 	animeSQLBuilder.SetCountOnly(false)
 	animeSQLBuilder.SetRowNumber(rand.Int63n(countOfAnimes + 1))
 	animeRO, err := rah.Dao.GetRandomAnime(animeSQLBuilder)
 	if err != nil {
-		HandleErr(parseErr, w, 400, "Internal error")
+		HandleErr(errors.Wrap(err, ""), w, 400, "Internal error")
 		return
 	}
-	ReturnResponseAsJSON(w, animeRO, 200)
+	if err := ReturnResponseAsJSON(w, animeRO, 200); err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 500, "Error")
+	}
 }

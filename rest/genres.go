@@ -1,12 +1,12 @@
 package rest
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 
 	"github.com/HDIOES/cpa-backend/models"
+	"github.com/pkg/errors"
 )
 
 //GenreHandler struct
@@ -17,13 +17,13 @@ type GenreHandler struct {
 func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars, parseErr := url.ParseQuery(r.URL.RawQuery)
 	if parseErr != nil {
-		log.Println(parseErr)
+		HandleErr(errors.Wrap(parseErr, ""), w, 400, "Url not valid")
 	}
 	genreSQLBuilder := models.GenreQueryBuilder{}
 	if limit, limitOk := vars["limit"]; limitOk {
 		limitInt64, parseErr := strconv.ParseInt(limit[0], 10, 32)
 		if parseErr != nil {
-			HandleErr(parseErr, w, 400, "Not valid limit")
+			HandleErr(errors.Wrap(parseErr, ""), w, 400, "Not valid limit")
 			return
 		}
 		genreSQLBuilder.SetLimit(int32(limitInt64))
@@ -31,7 +31,7 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if offset, offsetOk := vars["offset"]; offsetOk {
 		offsetInt64, parseErr := strconv.ParseInt(offset[0], 10, 32)
 		if parseErr != nil {
-			HandleErr(parseErr, w, 400, "Not valid offset")
+			HandleErr(errors.Wrap(parseErr, ""), w, 400, "Not valid offset")
 			return
 		}
 		genreSQLBuilder.SetOffset(int32(offsetInt64))
@@ -39,7 +39,7 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	genreDtos, findByFilterErr := g.Dao.FindByFilter(genreSQLBuilder)
 	if findByFilterErr != nil {
-		HandleErr(findByFilterErr, w, 400, "Error")
+		HandleErr(errors.Wrap(findByFilterErr, ""), w, 500, "Error")
 		return
 	}
 	genres := []GenreRo{}
@@ -51,7 +51,9 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		genreRo.Kind = genreDto.Kind
 		genres = append(genres, genreRo)
 	}
-	ReturnResponseAsJSON(w, genres, 200)
+	if err := ReturnResponseAsJSON(w, genres, 200); err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 500, "Error")
+	}
 }
 
 //GenreRo struct

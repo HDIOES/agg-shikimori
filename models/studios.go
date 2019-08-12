@@ -2,10 +2,11 @@ package models
 
 import (
 	"database/sql"
-	"errors"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 //StudioDAO struct
@@ -17,18 +18,18 @@ type StudioDAO struct {
 func (dao *StudioDAO) DeleteAll() error {
 	tx, beginErr := dao.Db.Begin()
 	if beginErr != nil {
-		return rollbackTransaction(tx, beginErr)
+		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
-	stmt, prepareStmtErr := tx.Prepare("DELETE FROM studio")
+	stmt, prepareStmtErr := tx.Prepare("TRUNCATE studio CASCADE")
 	if prepareStmtErr != nil {
-		return rollbackTransaction(tx, prepareStmtErr)
+		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}
 	defer stmt.Close()
 	if _, stmtErr := stmt.Exec(); stmtErr != nil {
-		return rollbackTransaction(tx, stmtErr)
+		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	if cErr := commitTransaction(tx); cErr != nil {
-		return cErr
+		return errors.Wrap(cErr, "")
 	}
 	return nil
 }
@@ -37,12 +38,12 @@ func (dao *StudioDAO) DeleteAll() error {
 func (dao *StudioDAO) FindByID(id int64) (*StudioDTO, error) {
 	stmt, stmtErr := dao.Db.Prepare("SELECT ")
 	if stmtErr != nil {
-		return nil, stmtErr
+		return nil, errors.Wrap(stmtErr, "")
 	}
 	defer stmt.Close()
 	result, resultErr := stmt.Query(id)
 	if resultErr != nil {
-		return nil, resultErr
+		return nil, errors.Wrap(resultErr, "")
 	}
 	defer result.Close()
 	if result.Next() {
@@ -71,7 +72,7 @@ func (dao *StudioDAO) FindByExternalID(externalID string) (*StudioDTO, error) {
 	sqlBuilder.SetExternalID(externalID)
 	studios, err := dao.FindByFilter(sqlBuilder)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "")
 	}
 	if len(studios) > 0 {
 		return &studios[0], nil
@@ -84,12 +85,12 @@ func (dao *StudioDAO) FindByFilter(sqlBuilder StudioQueryBuilder) ([]StudioDTO, 
 	query, args := sqlBuilder.Build()
 	stmt, stmtErr := dao.Db.Prepare(query)
 	if stmtErr != nil {
-		return nil, stmtErr
+		return nil, errors.Wrap(stmtErr, "")
 	}
 	defer stmt.Close()
 	result, resultErr := stmt.Query(args...)
 	if resultErr != nil {
-		return nil, resultErr
+		return nil, errors.Wrap(resultErr, "")
 	}
 	defer result.Close()
 	dtos := []StudioDTO{}
@@ -118,17 +119,17 @@ func (dao *StudioDAO) FindByFilter(sqlBuilder StudioQueryBuilder) ([]StudioDTO, 
 func (dao *StudioDAO) Create(dto StudioDTO) (int64, error) {
 	tx, txErr := dao.Db.Begin()
 	if txErr != nil {
-		return 0, txErr
+		return 0, errors.Wrap(txErr, "")
 	}
 	stmt, stmtErr := tx.Prepare("INSERT INTO studio (external_id, studio_name, filtered_studio_name, is_real, image_url) VALUES($1, $2, $3, $4, $5) RETURNING id")
 	if stmtErr != nil {
 		time.Now()
-		return 0, rollbackTransaction(tx, stmtErr)
+		return 0, rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	defer stmt.Close()
 	result, resultErr := stmt.Query(dto.ExternalID, dto.Name, dto.FilteredStudioName, dto.IsReal, dto.ImageURL)
 	if resultErr != nil {
-		return 0, rollbackTransaction(tx, resultErr)
+		return 0, rollbackTransaction(tx, errors.Wrap(resultErr, ""))
 	}
 	var ID sql.NullInt64
 	if result.Next() {
@@ -139,7 +140,7 @@ func (dao *StudioDAO) Create(dto StudioDTO) (int64, error) {
 	}
 	result.Close()
 	if commitErr := tx.Commit(); commitErr != nil {
-		return 0, rollbackTransaction(tx, commitErr)
+		return 0, rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return ID.Int64, nil
 }
@@ -148,19 +149,19 @@ func (dao *StudioDAO) Create(dto StudioDTO) (int64, error) {
 func (dao *StudioDAO) Update(dto StudioDTO) error {
 	tx, txErr := dao.Db.Begin()
 	if txErr != nil {
-		return txErr
+		return errors.Wrap(txErr, "")
 	}
 	stmt, stmtErr := tx.Prepare("UPDATE studio SET external_id = $1, SET studio_name = $2, SET filtered_studio_name = $3, SET is_real = $4, SET image_url = $5 WHERE id = $6")
 	if stmtErr != nil {
-		return rollbackTransaction(tx, stmtErr)
+		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	defer stmt.Close()
 	_, resultErr := stmt.Exec(dto.ExternalID, dto.Name, dto.FilteredStudioName, dto.IsReal, dto.ImageURL, dto.ID)
 	if resultErr != nil {
-		return rollbackTransaction(tx, resultErr)
+		return rollbackTransaction(tx, errors.Wrap(resultErr, ""))
 	}
 	if commitErr := tx.Commit(); commitErr != nil {
-		return rollbackTransaction(tx, commitErr)
+		return rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return nil
 }

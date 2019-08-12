@@ -2,13 +2,16 @@ package rest
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
+
+	"github.com/HDIOES/cpa-backend/rest/util"
+	"github.com/pkg/errors"
 )
 
-func HandleErr(err error, w http.ResponseWriter, httpStatus int, errorMessage string) {
-	log.Println(err)
+//HandleErr function
+func HandleErr(err error, w http.ResponseWriter, httpStatus int, errorMessage string) error {
+	util.HandleError(err)
 	errorMessageBuilder := strings.Builder{}
 	errorMessageBuilder.WriteString("{")
 	errorMessageBuilder.WriteString("\"message\":")
@@ -16,11 +19,15 @@ func HandleErr(err error, w http.ResponseWriter, httpStatus int, errorMessage st
 	errorMessageBuilder.WriteString(errorMessage)
 	errorMessageBuilder.WriteString("\"")
 	errorMessageBuilder.WriteString("}")
-	ReturnResponseAsJSON(w, errorMessageBuilder.String(), httpStatus)
+	return ReturnResponseAsJSON(w, errorMessageBuilder.String(), httpStatus)
 }
 
-func ReturnResponseAsJSON(w http.ResponseWriter, body interface{}, httpStatus int) {
+//ReturnResponseAsJSON function
+func ReturnResponseAsJSON(w http.ResponseWriter, body interface{}, httpStatus int) error {
 	w.WriteHeader(httpStatus)
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(body)
+	if err := json.NewEncoder(w).Encode(body); err != nil {
+		return errors.Wrap(err, "")
+	}
+	return nil
 }

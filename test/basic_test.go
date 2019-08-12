@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/HDIOES/cpa-backend/models"
+	"github.com/HDIOES/cpa-backend/rest/util"
+	"github.com/pkg/errors"
 
 	"github.com/gorilla/mux"
 
@@ -38,6 +40,11 @@ func wrapperTestMain(m *testing.M) int {
 	})
 	defer log.Print("Stopping test container")
 	return m.Run()
+}
+
+func markAsFailAndAbortNow(t *testing.T, err error) {
+	util.HandleError(err)
+	t.FailNow()
 }
 
 func executeRequest(req *http.Request, router *mux.Router) *httptest.ResponseRecorder {
@@ -81,7 +88,7 @@ func insertAnimeToDatabase(
 	}
 	id, err := animeDao.Create(animeDto)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "")
 	}
 	return id, nil
 }
@@ -100,7 +107,7 @@ func insertStudioToDatabase(studioDao *models.StudioDAO,
 		ImageURL:           imageURL,
 	})
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "")
 	}
 	return id, nil
 }
@@ -113,7 +120,7 @@ func insertGenreToDatabase(genreDao *models.GenreDAO, externalID string, genreNa
 		Kind:       kind,
 	})
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "")
 	}
 	return id, nil
 }
@@ -124,16 +131,24 @@ func insertNewToDatabase(newDao *models.NewDAO, name *string, body *string) (int
 		Body: body,
 	})
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "")
 	}
 	return id, nil
 }
 
 func clearDb(newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) error {
-	newDao.DeleteAll()
-	genreDao.DeleteAll()
-	studioDao.DeleteAll()
-	animeDao.DeleteAll()
+	if err1 := newDao.DeleteAll(); err1 != nil {
+		return errors.Wrap(err1, "")
+	}
+	if err2 := genreDao.DeleteAll(); err2 != nil {
+		return errors.Wrap(err2, "")
+	}
+	if err3 := studioDao.DeleteAll(); err3 != nil {
+		return errors.Wrap(err3, "")
+	}
+	if err4 := animeDao.DeleteAll(); err4 != nil {
+		return errors.Wrap(err4, "")
+	}
 	return nil
 }
 
@@ -144,7 +159,7 @@ func applyMigrations(db *sql.DB) error {
 	if n, err := migrate.Exec(db, "postgres", migrations, migrate.Up); err == nil {
 		log.Printf("Applied %d migrations!\n", n)
 	} else {
-		return err
+		return errors.Wrap(err, "")
 	}
 	return nil
 }
