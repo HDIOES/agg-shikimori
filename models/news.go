@@ -17,7 +17,7 @@ func (dao *NewDAO) DeleteAll() error {
 	if beginErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
-	stmt, prepareStmtErr := tx.Prepare("DELETE FROM new")
+	stmt, prepareStmtErr := tx.Prepare("TRUNCATE new CASCADE")
 	if prepareStmtErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}

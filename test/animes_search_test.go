@@ -9,6 +9,7 @@ import (
 	"github.com/HDIOES/cpa-backend/models"
 	"github.com/HDIOES/cpa-backend/rest/util"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	_ "github.com/lib/pq"
@@ -16,7 +17,9 @@ import (
 
 func TestSearchAnimesSuccess(t *testing.T) {
 	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
-		clearDb(newDao, animeDao, genreDao, studioDao)
+		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
 		externalGenreID := "1"
 		externalStudioID := "1"
 		externalAnimeID := "1"
@@ -46,32 +49,41 @@ func TestSearchAnimesSuccess(t *testing.T) {
 		//fill database
 		genreID, insertGenreErr := insertGenreToDatabase(genreDao, externalGenreID, &genreName, &genreRussianName, &genreKind)
 		if insertGenreErr != nil {
-			t.Fatal(insertGenreErr)
+			markAsFailAndAbortNow(t, errors.Wrap(insertGenreErr, ""))
 		}
 		studioID, insertStudioErr := insertStudioToDatabase(studioDao, externalStudioID, &studioName, &russianStudioName, &isReal, &imageURL)
 		if insertStudioErr != nil {
-			t.Fatal(insertStudioErr)
+			markAsFailAndAbortNow(t, errors.Wrap(insertStudioErr, ""))
 		}
 		animeID, insertAnimeErr := insertAnimeToDatabase(animeDao, externalAnimeID, &animeName, &russianAnimeName, &animeImageURL, &animeKind, &animeStatus, &animeEpizodes, &animeEpizodesAired,
 			&airedOn,
 			&releasedOn, &animePostreURL, &animeProcessed)
 		if insertAnimeErr != nil {
-			t.Fatal(insertAnimeErr)
+			markAsFailAndAbortNow(t, errors.Wrap(insertAnimeErr, ""))
 		}
-		linkAnimeAndGenre(animeDao, animeID, genreID)
-		linkAnimeAndStudio(animeDao, animeID, studioID)
+		if linkAnimeAndGenreErr := linkAnimeAndGenre(animeDao, animeID, genreID); linkAnimeAndGenreErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(linkAnimeAndGenreErr, ""))
+		}
+		if linkAnimeAndStudioErr := linkAnimeAndStudio(animeDao, animeID, studioID); linkAnimeAndStudioErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(linkAnimeAndStudioErr, ""))
+		}
 		//create request
-		request, _ := http.NewRequest("GET", "/api/animes/search", nil)
+		request, err := http.NewRequest("GET", "/api/animes/search", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
 		recorder := executeRequest(request, router)
 		//asserts
 		assert.Equal(t, 200, recorder.Code)
 	})
-
 }
 
 func TestSearchAnimes_limitFail(t *testing.T) {
 	diContainer.Invoke(func(router *mux.Router) {
-		request, _ := http.NewRequest("GET", "/api/animes/search?limit=34df4", nil)
+		request, err := http.NewRequest("GET", "/api/animes/search?limit=34df4", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
 		recorder := executeRequest(request, router)
 		assert.Equal(t, 400, recorder.Code)
 	})
@@ -79,7 +91,10 @@ func TestSearchAnimes_limitFail(t *testing.T) {
 
 func TestSearchAnimes_offsetFail(t *testing.T) {
 	diContainer.Invoke(func(router *mux.Router) {
-		request, _ := http.NewRequest("GET", "/api/animes/search?offset=df44", nil)
+		request, err := http.NewRequest("GET", "/api/animes/search?offset=df44", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
 		recorder := executeRequest(request, router)
 		assert.Equal(t, 400, recorder.Code)
 	})
@@ -87,7 +102,10 @@ func TestSearchAnimes_offsetFail(t *testing.T) {
 
 func TestSearchAnimes_scoreFail(t *testing.T) {
 	diContainer.Invoke(func(router *mux.Router) {
-		request, _ := http.NewRequest("GET", "/api/animes/search?score=hnk", nil)
+		request, err := http.NewRequest("GET", "/api/animes/search?score=hnk", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, err)
+		}
 		recorder := executeRequest(request, router)
 		assert.Equal(t, 400, recorder.Code)
 	})
@@ -95,7 +113,10 @@ func TestSearchAnimes_scoreFail(t *testing.T) {
 
 func TestRandom_scoreFail(t *testing.T) {
 	diContainer.Invoke(func(router *mux.Router) {
-		request, _ := http.NewRequest("GET", "/api/animes/random?score=hnk", nil)
+		request, err := http.NewRequest("GET", "/api/animes/random?score=hnk", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, err)
+		}
 		recorder := executeRequest(request, router)
 		assert.Equal(t, 400, recorder.Code)
 	})

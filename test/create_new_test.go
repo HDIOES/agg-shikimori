@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 
 	"github.com/HDIOES/cpa-backend/models"
 	"github.com/HDIOES/cpa-backend/rest"
@@ -17,16 +18,21 @@ import (
 
 func TestCreateNew_success(t *testing.T) {
 	diContainer.Invoke(func(router *mux.Router, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) {
-		clearDb(newDao, animeDao, genreDao, studioDao)
+		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
 		Name := "Ужасная статья"
 		Body := "Ужасная статья?"
 		requestBody := rest.NewRo{Name: &Name, Body: &Body}
 		reader, readErr := GetJSONBodyReader(requestBody)
 		if readErr != nil {
-			t.Fatal(readErr)
+			markAsFailAndAbortNow(t, errors.Wrap(readErr, ""))
 		}
 		//create request
-		request, _ := http.NewRequest("POST", "/api/news", reader)
+		request, err := http.NewRequest("POST", "/api/news", reader)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
 		recorder := executeRequest(request, router)
 		//asserts
 		assert.Equal(t, 200, recorder.Code)
@@ -37,7 +43,7 @@ func TestCreateNew_success(t *testing.T) {
 func GetJSONBodyReader(body interface{}) (*bytes.Reader, error) {
 	data, dataErr := json.Marshal(body)
 	if dataErr != nil {
-		return nil, dataErr
+		return nil, errors.Wrap(dataErr, "")
 	}
 	reader := bytes.NewReader(data)
 	return reader, nil

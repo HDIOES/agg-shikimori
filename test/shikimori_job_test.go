@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/HDIOES/cpa-backend/models"
+	"github.com/pkg/errors"
 
 	"github.com/HDIOES/cpa-backend/integration"
 	"github.com/HDIOES/cpa-backend/rest/util"
@@ -16,11 +17,13 @@ import (
 //TestSimple function
 func TestShikimoriJobSuccess(t *testing.T) {
 	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) {
-		clearDb(newDao, animeDao, genreDao, studioDao)
+		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
 		defer gock.Off()
 		animesData, err := ioutil.ReadFile("mock/shikimori_animes_success.json")
 		if err != nil {
-			t.Fatal(err)
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
 		}
 		gock.New(configuration.ShikimoriURL).
 			Get(configuration.ShikimoriAnimeSearchURL).
@@ -31,7 +34,7 @@ func TestShikimoriJobSuccess(t *testing.T) {
 
 		genresData, err := ioutil.ReadFile("mock/shikimori_genres_success.json")
 		if err != nil {
-			t.Fatal(err)
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
 		}
 		gock.New(configuration.ShikimoriURL).
 			Get(configuration.ShikimoriGenreURL).
@@ -40,7 +43,7 @@ func TestShikimoriJobSuccess(t *testing.T) {
 
 		studiosData, err := ioutil.ReadFile("mock/shikimori_studios_success.json")
 		if err != nil {
-			t.Fatal(err)
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
 		}
 		gock.New(configuration.ShikimoriURL).
 			Get(configuration.ShikimoriStudioURL).
@@ -49,7 +52,7 @@ func TestShikimoriJobSuccess(t *testing.T) {
 
 		oneAnimeData, err := ioutil.ReadFile("mock/one_anime_shikimori_success.json")
 		if err != nil {
-			t.Fatal(err)
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
 		}
 		gock.New(configuration.ShikimoriURL).
 			Get(configuration.ShikimoriAnimeSearchURL+"/").

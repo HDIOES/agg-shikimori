@@ -19,7 +19,7 @@ func (dao *GenreDAO) DeleteAll() error {
 	if beginErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
-	stmt, prepareStmtErr := tx.Prepare("DELETE FROM genre")
+	stmt, prepareStmtErr := tx.Prepare("TRUNCATE genre CASCADE")
 	if prepareStmtErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}

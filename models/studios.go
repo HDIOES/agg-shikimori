@@ -20,7 +20,7 @@ func (dao *StudioDAO) DeleteAll() error {
 	if beginErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(beginErr, ""))
 	}
-	stmt, prepareStmtErr := tx.Prepare("DELETE FROM studio")
+	stmt, prepareStmtErr := tx.Prepare("TRUNCATE studio CASCADE")
 	if prepareStmtErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(prepareStmtErr, ""))
 	}
