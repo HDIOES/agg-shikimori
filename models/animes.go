@@ -30,7 +30,7 @@ func (dao *AnimeDAO) DeleteAll() error {
 		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	if cErr := commitTransaction(tx); cErr != nil {
-		return cErr
+		return errors.Wrap(cErr, "")
 	}
 	return nil
 }
@@ -442,13 +442,11 @@ func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, er
 		airedOnTime, parseTimeErr := parseTime(airedOn.String)
 		if parseTimeErr != nil {
 			util.HandleError(parseTimeErr)
-			return nil, parseTimeErr
 		}
 		animeDto.AiredOn = &airedOnTime
 		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
 		if parseTimeErr != nil {
 			util.HandleError(parseTimeErr)
-			return nil, parseTimeErr
 		}
 		animeDto.ReleasedOn = &releasedOnTime
 		animeDto.PosterURL = &posterURL.String
