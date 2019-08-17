@@ -1,8 +1,12 @@
 package test
 
 import (
+	"encoding/json"
 	"io/ioutil"
+	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/HDIOES/cpa-backend/models"
 	"github.com/pkg/errors"
@@ -61,5 +65,40 @@ func TestShikimoriJobSuccess(t *testing.T) {
 			JSON(oneAnimeData)
 
 		job.Run()
+
+		//asserts
+		anime := integration.Anime{}
+		genres := []integration.Genre{}
+		studios := []integration.Studio{}
+		if unmarshalAnimeErr := json.Unmarshal(oneAnimeData, &anime); unmarshalAnimeErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(unmarshalAnimeErr, ""))
+		}
+		if unmarshalGenresErr := json.Unmarshal(genresData, &genres); unmarshalGenresErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(unmarshalGenresErr, ""))
+		}
+		if unmarshalStudioErr := json.Unmarshal(studiosData, &studios); unmarshalStudioErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(unmarshalStudioErr, ""))
+		}
+		for _, g := range genres {
+			genreDto, genreDtoErr := genreDao.FindByExternalID(strconv.FormatInt(*g.ID, 10))
+			if genreDtoErr != nil {
+				markAsFailAndAbortNow(t, errors.Wrap(genreDtoErr, ""))
+			}
+			abortIfFail(t, assert.Equal(t, strconv.FormatInt(*g.ID, 10), genreDto.ExternalID))
+			abortIfFail(t, EqualStringValues(t, g.Kind, genreDto.Kind))
+			abortIfFail(t, EqualStringValues(t, g.Name, genreDto.Name))
+			abortIfFail(t, EqualStringValues(t, g.Russian, genreDto.Russian))
+		}
+		for _, s := range studios {
+			studioDto, studioDtoErr := studioDao.FindByExternalID(strconv.FormatInt(*s.ID, 10))
+			if studioDtoErr != nil {
+				markAsFailAndAbortNow(t, errors.Wrap(studioDtoErr, ""))
+			}
+			abortIfFail(t, assert.Equal(t, strconv.FormatInt(*s.ID, 10), studioDto.ExternalID))
+			abortIfFail(t, EqualStringValues(t, s.FilteredName, studioDto.FilteredStudioName))
+			abortIfFail(t, EqualStringValues(t, s.Image, studioDto.ImageURL))
+			abortIfFail(t, EqualStringValues(t, s.Name, studioDto.Name))
+			abortIfFail(t, EqualBoolValues(t, s.Real, studioDto.IsReal))
+		}
 	})
 }

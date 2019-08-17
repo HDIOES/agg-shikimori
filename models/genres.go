@@ -60,7 +60,11 @@ func (dao *GenreDAO) FindByFilter(sqlBuilder GenreQueryBuilder) ([]GenreDTO, err
 		return nil, errors.Wrap(resultErr, "")
 	}
 	defer result.Close()
-	dtos := []GenreDTO{}
+	var capacity int32 = 50
+	if sqlBuilder.Limit > 0 && sqlBuilder.Limit <= 50 {
+		capacity = sqlBuilder.Limit
+	}
+	dtos := make([]GenreDTO, 0, capacity)
 	for result.Next() {
 		var ID sql.NullInt64
 		var externalID sql.NullString
@@ -68,7 +72,22 @@ func (dao *GenreDAO) FindByFilter(sqlBuilder GenreQueryBuilder) ([]GenreDTO, err
 		var russian sql.NullString
 		var kind sql.NullString
 		result.Scan(&ID, &externalID, &name, &russian, &kind)
-		dto := GenreDTO{ID: ID.Int64, ExternalID: externalID.String, Name: &name.String, Russian: &russian.String, Kind: &kind.String}
+		dto := GenreDTO{}
+		if ID.Valid {
+			dto.ID = ID.Int64
+		}
+		if externalID.Valid {
+			dto.ExternalID = externalID.String
+		}
+		if name.Valid {
+			dto.Name = &name.String
+		}
+		if russian.Valid {
+			dto.Russian = &russian.String
+		}
+		if kind.Valid {
+			dto.Kind = &kind.String
+		}
 		dtos = append(dtos, dto)
 	}
 	return dtos, nil

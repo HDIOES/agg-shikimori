@@ -49,9 +49,15 @@ func (dao *NewDAO) Find(id int64) (*NewDTO, error) {
 		var sqlName sql.NullString
 		var sqlBody sql.NullString
 		result.Scan(&sqlID, &sqlName, &sqlBody)
-		newDTO.ID = &sqlID.Int64
-		newDTO.Name = &sqlName.String
-		newDTO.Body = &sqlBody.String
+		if sqlID.Valid {
+			newDTO.ID = &sqlID.Int64
+		}
+		if sqlName.Valid {
+			newDTO.Name = &sqlName.String
+		}
+		if sqlBody.Valid {
+			newDTO.Body = &sqlBody.String
+		}
 	} else {
 		return nil, errors.New("New not found")
 	}
