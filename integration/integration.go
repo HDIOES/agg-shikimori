@@ -117,6 +117,8 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, animeDto models.Ani
 		durationFloat := float64(*anime.Duration)
 		animeDto.Duration = &durationFloat
 	}
+	processed := true
+	animeDto.Processed = &processed
 	//then we need to update row in database
 	updateErr := sj.AnimeDao.Update(animeDto)
 	if updateErr != nil {

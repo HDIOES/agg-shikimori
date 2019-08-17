@@ -2,6 +2,7 @@ package test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strconv"
 	"testing"
@@ -100,5 +101,31 @@ func TestShikimoriJobSuccess(t *testing.T) {
 			abortIfFail(t, EqualStringValues(t, s.Name, studioDto.Name))
 			abortIfFail(t, EqualBoolValues(t, s.Real, studioDto.IsReal))
 		}
+		animeDto, animeDtoErr := animeDao.FindByExternalID(strconv.FormatInt(*anime.ID, 10))
+		if animeDtoErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(animeDtoErr, ""))
+		}
+		abortIfFail(t, assert.Equal(t, strconv.FormatInt(*anime.ID, 10), animeDto.ExternalID))
+		abortIfFail(t, EqualStringValues(t, anime.Name, animeDto.Name))
+		abortIfFail(t, EqualStringValues(t, anime.Russian, animeDto.Russian))
+		abortIfFail(t, EqualStringValues(t, anime.URL, animeDto.AnimeURL))
+		abortIfFail(t, EqualStringValues(t, anime.Kind, animeDto.Kind))
+		abortIfFail(t, EqualStringValues(t, anime.Status, animeDto.Status))
+		abortIfFail(t, EqualInt64Values(t, anime.Episodes, animeDto.Epizodes))
+		abortIfFail(t, EqualInt64Values(t, anime.EpisodesAired, animeDto.EpizodesAired))
+		//ReleasedOn
+		//AiredOn
+		abortIfFail(t, EqualStringValues(t, anime.Image.Original, animeDto.PosterURL))
+		abortIfFail(t, assert.NotNil(t, animeDto.Score))
+		dbScore := fmt.Sprintf("%.2f", *animeDto.Score)
+		abortIfFail(t, EqualStringValues(t, anime.Score, &dbScore))
+		abortIfFail(t, assert.NotNil(t, animeDto.Duration))
+		dbDuration := int64(*animeDto.Duration)
+		abortIfFail(t, EqualInt64Values(t, anime.Duration, &dbDuration))
+		abortIfFail(t, EqualStringValues(t, anime.Rating, animeDto.Rating))
+		abortIfFail(t, EqualStringValues(t, anime.Franchise, animeDto.Franchise))
+		abortIfFail(t, assert.NotNil(t, animeDto.Processed))
+		processed := true
+		abortIfFail(t, EqualBoolValues(t, &processed, animeDto.Processed))
 	})
 }

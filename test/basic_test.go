@@ -55,33 +55,31 @@ func abortIfFail(t *testing.T, result bool) {
 }
 
 func EqualInt64Values(t *testing.T, expected, actual *int64, msgAndArgs ...interface{}) bool {
-	if expected == nil {
-		return assert.True(t, actual == nil, msgAndArgs)
-	} else if actual == nil {
-		return assert.True(t, expected == nil, msgAndArgs)
-	} else {
-		return assert.Equal(t, expected, actual, msgAndArgs)
+	if actual != nil && expected != nil {
+		return assert.Equal(t, *expected, *actual, msgAndArgs)
 	}
+	return assert.True(t, expected == nil, msgAndArgs) && assert.True(t, actual == nil, msgAndArgs)
 }
 
 func EqualStringValues(t *testing.T, expected, actual *string, msgAndArgs ...interface{}) bool {
-	if expected == nil {
-		return assert.True(t, actual == nil, msgAndArgs)
-	} else if actual == nil {
-		return assert.True(t, expected == nil, msgAndArgs)
-	} else {
-		return assert.Equal(t, expected, actual, msgAndArgs)
+	if actual != nil && expected != nil {
+		return assert.Equal(t, *expected, *actual, msgAndArgs)
 	}
+	return assert.True(t, expected == nil, msgAndArgs) && assert.True(t, actual == nil, msgAndArgs)
 }
 
 func EqualBoolValues(t *testing.T, expected, actual *bool, msgAndArgs ...interface{}) bool {
-	if expected == nil {
-		return assert.True(t, actual == nil, msgAndArgs)
-	} else if actual == nil {
-		return assert.True(t, expected == nil, msgAndArgs)
-	} else {
-		return assert.Equal(t, expected, actual, msgAndArgs)
+	if actual != nil && expected != nil {
+		return assert.Equal(t, *expected, *actual, msgAndArgs)
 	}
+	return assert.True(t, expected == nil, msgAndArgs) && assert.True(t, actual == nil, msgAndArgs)
+}
+
+func EqualFloat64Values(t *testing.T, expected, actual *float64, msgAndArgs ...interface{}) bool {
+	if actual != nil && expected != nil {
+		return assert.Equal(t, *expected, *actual, msgAndArgs)
+	}
+	return assert.True(t, expected == nil, msgAndArgs) && assert.True(t, actual == nil, msgAndArgs)
 }
 
 func executeRequest(req *http.Request, router *mux.Router) *httptest.ResponseRecorder {
