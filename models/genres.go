@@ -128,7 +128,7 @@ func (dao *GenreDAO) Update(dto GenreDTO) error {
 	if txErr != nil {
 		return errors.Wrap(txErr, "")
 	}
-	stmt, stmtErr := tx.Prepare("UPDATE genre SET external_id = $1, SET genre_name = $2, SET russian = $3, SET kind = $4 WHERE id = $5")
+	stmt, stmtErr := tx.Prepare("UPDATE genre SET external_id = $1, genre_name = $2, russian = $3, kind = $4 WHERE id = $5")
 	if stmtErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}

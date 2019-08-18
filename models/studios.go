@@ -176,7 +176,7 @@ func (dao *StudioDAO) Update(dto StudioDTO) error {
 	if txErr != nil {
 		return errors.Wrap(txErr, "")
 	}
-	stmt, stmtErr := tx.Prepare("UPDATE studio SET external_id = $1, SET studio_name = $2, SET filtered_studio_name = $3, SET is_real = $4, SET image_url = $5 WHERE id = $6")
+	stmt, stmtErr := tx.Prepare("UPDATE studio SET external_id = $1, studio_name = $2, filtered_studio_name = $3, is_real = $4, image_url = $5 WHERE id = $6")
 	if stmtErr != nil {
 		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
