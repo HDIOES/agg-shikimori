@@ -1,12 +1,14 @@
 package test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/HDIOES/cpa-backend/integration"
 	"github.com/HDIOES/cpa-backend/models"
+	"github.com/HDIOES/cpa-backend/rest"
 	"github.com/HDIOES/cpa-backend/rest/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -35,7 +37,7 @@ func TestSearchAnimesSuccess(t *testing.T) {
 
 		animeName := "One Punch Man"
 		russianAnimeName := "Один Удар Человек"
-		animeImageURL := "/url.jpg"
+		animeURL := "/url.jpg"
 		animeKind := "tv"
 		animeStatus := "ongoing"
 		animePostreURL := "/url.jpg"
@@ -55,7 +57,7 @@ func TestSearchAnimesSuccess(t *testing.T) {
 		if insertStudioErr != nil {
 			markAsFailAndAbortNow(t, errors.Wrap(insertStudioErr, ""))
 		}
-		animeID, insertAnimeErr := insertAnimeToDatabase(animeDao, externalAnimeID, &animeName, &russianAnimeName, &animeImageURL, &animeKind, &animeStatus, &animeEpizodes, &animeEpizodesAired,
+		animeID, insertAnimeErr := insertAnimeToDatabase(animeDao, externalAnimeID, &animeName, &russianAnimeName, &animeURL, &animeKind, &animeStatus, &animeEpizodes, &animeEpizodesAired,
 			&airedOn,
 			&releasedOn, &animePostreURL, &animeProcessed)
 		if insertAnimeErr != nil {
@@ -74,7 +76,25 @@ func TestSearchAnimesSuccess(t *testing.T) {
 		}
 		recorder := executeRequest(request, router)
 		//asserts
-		assert.Equal(t, 200, recorder.Code)
+		abortIfFail(t, assert.Equal(t, 200, recorder.Code))
+		//get actual data
+		actualJSONResponseBody := recorder.Body.String()
+		//form expected data
+		animesRos := make([]rest.AnimeRO, 0, 1)
+		animePosterURLRO := configuration.ShikimoriURL + animePostreURL
+		animeURLRO := configuration.ShikimoriURL + animeURL
+		animeRO := rest.AnimeRO{
+			Name:        &animeName,
+			RussuanName: &russianAnimeName,
+			URL:         &animeURLRO,
+			PosterURL:   &animePosterURLRO,
+		}
+		animesRos = append(animesRos, animeRO)
+		expectedJSONResponseBodyBytes, marshalErr := json.Marshal(&animesRos)
+		if marshalErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(marshalErr, ""))
+		}
+		abortIfFail(t, assert.JSONEq(t, string(expectedJSONResponseBodyBytes), actualJSONResponseBody))
 	})
 }
 
