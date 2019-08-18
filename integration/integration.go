@@ -203,9 +203,6 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 	if getStudioErr != nil {
 		return errors.Wrap(getStudioErr, shikimoriError)
 	}
-	if resp.StatusCode != 200 {
-		return errors.New("Shikimori call error")
-	}
 	defer resp.Body.Close()
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
 	if readStudiosErr != nil {
