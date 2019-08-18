@@ -98,6 +98,43 @@ func TestSearchAnimesSuccess(t *testing.T) {
 	})
 }
 
+func TestSearchAnimes_pagingSuccess(t *testing.T) {
+
+}
+
+func TestSearchAnimes_byStatusSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byKindSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byOrderSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byScoreSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byGenresIdsSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byStudioIdsSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byDurationSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byRatingSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byFranchiseSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byIdsSuccess(t *testing.T) {
+}
+
+func TestSearchAnimes_byExludeIdsSuccess(t *testing.T) {
+}
+
 func TestSearchAnimes_limitFail(t *testing.T) {
 	diContainer.Invoke(func(router *mux.Router) {
 		request, err := http.NewRequest("GET", "/api/animes/search?limit=34df4", nil)
