@@ -390,18 +390,71 @@ func TestShikimoriJob_shikimoriOneAnimeError(t *testing.T) {
 	})
 }
 
-func TestShikimoriJob_updateSameExistingInDatabaseAnimes(t *testing.T) {
-	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) {
-		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
-			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
-		}
-	})
-}
-
 func TestShikimoriJob_updateSameExistingInDatabaseGenres(t *testing.T) {
 	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) {
 		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
 			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		defer gock.Off()
+		//insert predefined test data to database
+		genreDto := models.GenreDTO{}
+		genreDto.ExternalID = "89"
+		genre89name := "genre89"
+		genreDto.Name = &genre89name
+		russianGenre89 := "russianGenre89"
+		genreDto.Russian = &russianGenre89
+		genreKind := "genreKind"
+		genreDto.Kind = &genreKind
+		_, genreErr := genreDao.Create(genreDto)
+		if genreErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(genreErr, ""))
+		}
+
+		//mock empty animes
+		gock.New(configuration.ShikimoriURL).
+			Get(configuration.ShikimoriAnimeSearchURL).
+			MatchParam("page", "1").
+			MatchParam("limit", "50").
+			Reply(200).
+			JSON("[]")
+
+		//mock genres
+		genresData, err := ioutil.ReadFile("mock/one_genre89_shikimori_success.json")
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		gock.New(configuration.ShikimoriURL).
+			Get(configuration.ShikimoriGenreURL).
+			Reply(200).
+			JSON(genresData)
+
+		//mock studios
+		gock.New(configuration.ShikimoriURL).
+			Get(configuration.ShikimoriStudioURL).
+			Reply(200).
+			JSON("[]")
+
+		job.Run()
+
+		genres := []integration.Genre{}
+		if unmarshalGenresErr := json.Unmarshal(genresData, &genres); unmarshalGenresErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(unmarshalGenresErr, ""))
+		}
+		genreDtos, genreDtosErr := genreDao.FindByFilter(models.GenreQueryBuilder{})
+		if genreDtosErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(genreDtosErr, ""))
+		}
+		abortIfFail(t, assert.Equal(t, 1, len(genreDtos)))
+
+		for _, g := range genres {
+			actualGenreDto, genreDtoErr := genreDao.FindByExternalID(strconv.FormatInt(*g.ID, 10))
+			if genreDtoErr != nil {
+				markAsFailAndAbortNow(t, errors.Wrap(genreDtoErr, ""))
+			}
+			abortIfFail(t, assert.Equal(t, strconv.FormatInt(*g.ID, 10), actualGenreDto.ExternalID))
+			abortIfFail(t, EqualStringValues(t, g.Kind, actualGenreDto.Kind))
+			abortIfFail(t, EqualStringValues(t, g.Name, actualGenreDto.Name))
+			abortIfFail(t, EqualStringValues(t, g.Russian, actualGenreDto.Russian))
 		}
 	})
 }
@@ -411,5 +464,75 @@ func TestShikimoriJob_updateSameExistingInDatabaseStudios(t *testing.T) {
 		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
 			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
 		}
+		defer gock.Off()
+		//insert predefined test data to database
+		studioDto := models.StudioDTO{}
+		studioDto.ExternalID = "1"
+
+		studio1name := "studio1"
+		studioDto.Name = &studio1name
+
+		filteredStudioName1 := "filteredStudioName"
+		studioDto.FilteredStudioName = &filteredStudioName1
+
+		studioImage := "/image.jpg"
+		studioDto.ImageURL = &studioImage
+
+		isReal := false
+		studioDto.IsReal = &isReal
+
+		_, studioErr := studioDao.Create(studioDto)
+		if studioErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(studioErr, ""))
+		}
+
+		//mock empty animes
+		gock.New(configuration.ShikimoriURL).
+			Get(configuration.ShikimoriAnimeSearchURL).
+			MatchParam("page", "1").
+			MatchParam("limit", "50").
+			Reply(200).
+			JSON("[]")
+
+		//mock empty genres
+		gock.New(configuration.ShikimoriURL).
+			Get(configuration.ShikimoriGenreURL).
+			Reply(200).
+			JSON("[]")
+
+		//mock one studio
+		studiosData, err := ioutil.ReadFile("mock/one_studio1_shikimori_success.json")
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		gock.New(configuration.ShikimoriURL).
+			Get(configuration.ShikimoriStudioURL).
+			Reply(200).
+			JSON(studiosData)
+
+		job.Run()
+
+		studios := []integration.Studio{}
+		if unmarshalStudiosErr := json.Unmarshal(studiosData, &studios); unmarshalStudiosErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(unmarshalStudiosErr, ""))
+		}
+		studioDtos, studioDtosErr := studioDao.FindByFilter(models.StudioQueryBuilder{})
+		if studioDtosErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(studioDtosErr, ""))
+		}
+		abortIfFail(t, assert.Equal(t, 1, len(studioDtos)))
+
+		for _, s := range studios {
+			actualStudioDto, studioDtoErr := studioDao.FindByExternalID(strconv.FormatInt(*s.ID, 10))
+			if studioDtoErr != nil {
+				markAsFailAndAbortNow(t, errors.Wrap(studioDtoErr, ""))
+			}
+			abortIfFail(t, assert.Equal(t, strconv.FormatInt(*s.ID, 10), actualStudioDto.ExternalID))
+			abortIfFail(t, EqualStringValues(t, s.FilteredName, actualStudioDto.FilteredStudioName))
+			abortIfFail(t, EqualStringValues(t, s.Image, actualStudioDto.ImageURL))
+			abortIfFail(t, EqualStringValues(t, s.Name, actualStudioDto.Name))
+			abortIfFail(t, EqualBoolValues(t, s.Real, actualStudioDto.IsReal))
+		}
+
 	})
 }

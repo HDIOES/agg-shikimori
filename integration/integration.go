@@ -170,8 +170,8 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 	for _, genre := range genres {
 		externalID := strconv.FormatInt(*genre.ID, 10)
 		genreDto, dtoErr := sj.GenreDao.FindByExternalID(externalID)
-		genreNotFound := true
-		if genreNotFound {
+		genreNotFound := false
+		if dtoErr != nil {
 			genreNotFound = strings.Compare(dtoErr.Error(), "Genre not found") == 0
 		}
 		dto := models.GenreDTO{}
@@ -218,7 +218,7 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 	for _, shikiStudio := range studios {
 		externalID := strconv.FormatInt(*shikiStudio.ID, 10)
 		studioDto, findErr := sj.StudioDao.FindByExternalID(externalID)
-		studioNotFound := true
+		studioNotFound := false
 		if findErr != nil {
 			studioNotFound = strings.Compare(findErr.Error(), "Studio not found") == 0
 		}
