@@ -155,6 +155,9 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 	if getGenresErr != nil {
 		return errors.Wrap(getGenresErr, "")
 	}
+	if resp.StatusCode != 200 {
+		return errors.New("Shikimori call error")
+	}
 	defer resp.Body.Close()
 	body, readGenresErr := ioutil.ReadAll(resp.Body)
 	if readGenresErr != nil {
@@ -199,6 +202,9 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 	resp, getStudioErr := client.Get(sj.Config.ShikimoriURL + sj.Config.ShikimoriStudioURL)
 	if getStudioErr != nil {
 		return errors.Wrap(getStudioErr, shikimoriError)
+	}
+	if resp.StatusCode != 200 {
+		return errors.New("Shikimori call error")
 	}
 	defer resp.Body.Close()
 	body, readStudiosErr := ioutil.ReadAll(resp.Body)
