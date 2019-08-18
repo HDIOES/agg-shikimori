@@ -290,8 +290,10 @@ func (dao *AnimeDAO) Create(anime AnimeDTO) (int64, error) {
 	if result.Next() {
 		result.Scan(&ID)
 	}
-	defer result.Close()
-	defer commitTransaction(tx)
+	result.Close()
+	if commitErr := tx.Commit(); commitErr != nil {
+		return 0, rollbackTransaction(tx, errors.Wrap(commitErr, ""))
+	}
 	return ID.Int64, nil
 }
 
