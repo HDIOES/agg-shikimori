@@ -30,7 +30,7 @@ func (dao *AnimeDAO) DeleteAll() error {
 		return rollbackTransaction(tx, errors.Wrap(stmtErr, ""))
 	}
 	if cErr := commitTransaction(tx); cErr != nil {
-		return cErr
+		return errors.Wrap(cErr, "")
 	}
 	return nil
 }
@@ -48,7 +48,11 @@ func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) 
 		return nil, errors.Wrap(stmtErr, "")
 	}
 	defer result.Close()
-	dtos := []AnimeDTO{}
+	var capacity int32 = 50
+	if filter.Limit > 0 && filter.Limit <= 50 {
+		capacity = filter.Limit
+	}
+	dtos := make([]AnimeDTO, 0, capacity)
 	for result.Next() {
 		animeDto := AnimeDTO{}
 		var id sql.NullInt64
@@ -86,35 +90,65 @@ func (dao *AnimeDAO) FindByFilter(filter AnimeQueryBuilder) ([]AnimeDTO, error) 
 			&rating,
 			&franchase,
 			&processed)
-		animeDto.ID = id.Int64
-		animeDto.Name = &name.String
-		animeDto.ExternalID = externalID.String
-		animeDto.Russian = &russianName.String
-		animeDto.AnimeURL = &animeURL.String
-		animeDto.Kind = &kind.String
-		animeDto.Status = &animeStatus.String
-		animeDto.Epizodes = &epizodes.Int64
-		animeDto.EpizodesAired = &epizodesAired.Int64
-		airedOnTime, parseTimeErr := parseTime(airedOn.String)
-		if parseTimeErr != nil {
-			util.HandleError(parseTimeErr)
-			animeDto.AiredOn = nil
-		} else {
+		if id.Valid {
+			animeDto.ID = id.Int64
+		}
+		if name.Valid {
+			animeDto.Name = &name.String
+		}
+		if externalID.Valid {
+			animeDto.ExternalID = externalID.String
+		}
+		if russianName.Valid {
+			animeDto.Russian = &russianName.String
+		}
+		if animeURL.Valid {
+			animeDto.AnimeURL = &animeURL.String
+		}
+		if kind.Valid {
+			animeDto.Kind = &kind.String
+		}
+		if animeStatus.Valid {
+			animeDto.Status = &animeStatus.String
+		}
+		if epizodes.Valid {
+			animeDto.Epizodes = &epizodes.Int64
+		}
+		if epizodesAired.Valid {
+			animeDto.EpizodesAired = &epizodesAired.Int64
+		}
+		if airedOn.Valid {
+			airedOnTime, parseTimeErr := parseTime(airedOn.String)
+			if parseTimeErr != nil {
+				util.HandleError(parseTimeErr)
+			}
 			animeDto.AiredOn = &airedOnTime
 		}
-		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
-		if parseTimeErr != nil {
-			util.HandleError(parseTimeErr)
-			animeDto.ReleasedOn = nil
-		} else {
+		if releasedOn.Valid {
+			releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
+			if parseTimeErr != nil {
+				util.HandleError(parseTimeErr)
+			}
 			animeDto.ReleasedOn = &releasedOnTime
 		}
-		animeDto.PosterURL = &posterURL.String
-		animeDto.Score = &score.Float64
-		animeDto.Duration = &duration.Float64
-		animeDto.Rating = &rating.String
-		animeDto.Franchise = &franchase.String
-		animeDto.Processed = &processed.Bool
+		if posterURL.Valid {
+			animeDto.PosterURL = &posterURL.String
+		}
+		if score.Valid {
+			animeDto.Score = &score.Float64
+		}
+		if duration.Valid {
+			animeDto.Duration = &duration.Float64
+		}
+		if rating.Valid {
+			animeDto.Rating = &rating.String
+		}
+		if franchase.Valid {
+			animeDto.Franchise = &franchase.String
+		}
+		if processed.Valid {
+			animeDto.Processed = &processed.Bool
+		}
 		dtos = append(dtos, animeDto)
 	}
 	return dtos, nil
@@ -430,33 +464,65 @@ func (dao *AnimeDAO) GetRandomAnime(sqlBuilder AnimeQueryBuilder) (*AnimeDTO, er
 			&rating,
 			&franchase,
 			&processed)
-		animeDto.ID = id.Int64
-		animeDto.Name = &name.String
-		animeDto.ExternalID = externalID.String
-		animeDto.Russian = &russianName.String
-		animeDto.AnimeURL = &animeURL.String
-		animeDto.Kind = &kind.String
-		animeDto.Status = &animeStatus.String
-		animeDto.Epizodes = &epizodes.Int64
-		animeDto.EpizodesAired = &epizodesAired.Int64
-		airedOnTime, parseTimeErr := parseTime(airedOn.String)
-		if parseTimeErr != nil {
-			util.HandleError(parseTimeErr)
-			return nil, parseTimeErr
+		if id.Valid {
+			animeDto.ID = id.Int64
 		}
-		animeDto.AiredOn = &airedOnTime
-		releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
-		if parseTimeErr != nil {
-			util.HandleError(parseTimeErr)
-			return nil, parseTimeErr
+		if name.Valid {
+			animeDto.Name = &name.String
 		}
-		animeDto.ReleasedOn = &releasedOnTime
-		animeDto.PosterURL = &posterURL.String
-		animeDto.Score = &score.Float64
-		animeDto.Duration = &duration.Float64
-		animeDto.Rating = &rating.String
-		animeDto.Franchise = &franchase.String
-		animeDto.Processed = &processed.Bool
+		if externalID.Valid {
+			animeDto.ExternalID = externalID.String
+		}
+		if russianName.Valid {
+			animeDto.Russian = &russianName.String
+		}
+		if animeURL.Valid {
+			animeDto.AnimeURL = &animeURL.String
+		}
+		if kind.Valid {
+			animeDto.Kind = &kind.String
+		}
+		if animeStatus.Valid {
+			animeDto.Status = &animeStatus.String
+		}
+		if epizodes.Valid {
+			animeDto.Epizodes = &epizodes.Int64
+		}
+		if epizodesAired.Valid {
+			animeDto.EpizodesAired = &epizodesAired.Int64
+		}
+		if airedOn.Valid {
+			airedOnTime, parseTimeErr := parseTime(airedOn.String)
+			if parseTimeErr != nil {
+				util.HandleError(parseTimeErr)
+			}
+			animeDto.AiredOn = &airedOnTime
+		}
+		if releasedOn.Valid {
+			releasedOnTime, parseTimeErr := parseTime(releasedOn.String)
+			if parseTimeErr != nil {
+				util.HandleError(parseTimeErr)
+			}
+			animeDto.ReleasedOn = &releasedOnTime
+		}
+		if posterURL.Valid {
+			animeDto.PosterURL = &posterURL.String
+		}
+		if score.Valid {
+			animeDto.Score = &score.Float64
+		}
+		if duration.Valid {
+			animeDto.Duration = &duration.Float64
+		}
+		if rating.Valid {
+			animeDto.Rating = &rating.String
+		}
+		if franchase.Valid {
+			animeDto.Franchise = &franchase.String
+		}
+		if processed.Valid {
+			animeDto.Processed = &processed.Bool
+		}
 	}
 	return &animeDto, nil
 }

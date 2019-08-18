@@ -12,6 +12,7 @@ import (
 	"github.com/HDIOES/cpa-backend/models"
 	"github.com/HDIOES/cpa-backend/rest/util"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/gorilla/mux"
 
@@ -45,6 +46,40 @@ func wrapperTestMain(m *testing.M) int {
 func markAsFailAndAbortNow(t *testing.T, err error) {
 	util.HandleError(err)
 	t.FailNow()
+}
+
+func abortIfFail(t *testing.T, result bool) {
+	if !result {
+		t.FailNow()
+	}
+}
+
+func EqualInt64Values(t *testing.T, expected, actual *int64, msgAndArgs ...interface{}) bool {
+	if actual != nil && expected != nil {
+		return assert.Equal(t, *expected, *actual, msgAndArgs)
+	}
+	return assert.True(t, expected == nil, msgAndArgs) && assert.True(t, actual == nil, msgAndArgs)
+}
+
+func EqualStringValues(t *testing.T, expected, actual *string, msgAndArgs ...interface{}) bool {
+	if actual != nil && expected != nil {
+		return assert.Equal(t, *expected, *actual, msgAndArgs)
+	}
+	return assert.True(t, expected == nil, msgAndArgs) && assert.True(t, actual == nil, msgAndArgs)
+}
+
+func EqualBoolValues(t *testing.T, expected, actual *bool, msgAndArgs ...interface{}) bool {
+	if actual != nil && expected != nil {
+		return assert.Equal(t, *expected, *actual, msgAndArgs)
+	}
+	return assert.True(t, expected == nil, msgAndArgs) && assert.True(t, actual == nil, msgAndArgs)
+}
+
+func EqualFloat64Values(t *testing.T, expected, actual *float64, msgAndArgs ...interface{}) bool {
+	if actual != nil && expected != nil {
+		return assert.Equal(t, *expected, *actual, msgAndArgs)
+	}
+	return assert.True(t, expected == nil, msgAndArgs) && assert.True(t, actual == nil, msgAndArgs)
 }
 
 func executeRequest(req *http.Request, router *mux.Router) *httptest.ResponseRecorder {

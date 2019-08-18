@@ -56,11 +56,21 @@ func (dao *StudioDAO) FindByID(id int64) (*StudioDTO, error) {
 		var imageURL sql.NullString
 		result.Scan(&ID, &externalID, &name, &filteredName, &isReal, &imageURL)
 		dto.ID = ID.Int64
-		dto.ExternalID = externalID.String
-		dto.Name = &name.String
-		dto.FilteredStudioName = &filteredName.String
-		dto.IsReal = &isReal.Bool
-		dto.ImageURL = &imageURL.String
+		if externalID.Valid {
+			dto.ExternalID = externalID.String
+		}
+		if name.Valid {
+			dto.Name = &name.String
+		}
+		if filteredName.Valid {
+			dto.FilteredStudioName = &filteredName.String
+		}
+		if isReal.Valid {
+			dto.IsReal = &isReal.Bool
+		}
+		if imageURL.Valid {
+			dto.ImageURL = &imageURL.String
+		}
 		return &dto, nil
 	}
 	return nil, errors.New("Studio not found")
@@ -93,7 +103,11 @@ func (dao *StudioDAO) FindByFilter(sqlBuilder StudioQueryBuilder) ([]StudioDTO, 
 		return nil, errors.Wrap(resultErr, "")
 	}
 	defer result.Close()
-	dtos := []StudioDTO{}
+	var capacity int32 = 50
+	if sqlBuilder.Limit > 0 && sqlBuilder.Limit <= 50 {
+		capacity = sqlBuilder.Limit
+	}
+	dtos := make([]StudioDTO, 0, capacity)
 	for result.Next() {
 		var ID sql.NullInt64
 		var externalID sql.NullString
@@ -102,13 +116,24 @@ func (dao *StudioDAO) FindByFilter(sqlBuilder StudioQueryBuilder) ([]StudioDTO, 
 		var isReal sql.NullBool
 		var imageURL sql.NullString
 		result.Scan(&ID, &externalID, &name, &filteredName, &isReal, &imageURL)
-		dto := StudioDTO{
-			ID:                 ID.Int64,
-			ExternalID:         externalID.String,
-			Name:               &name.String,
-			FilteredStudioName: &filteredName.String,
-			IsReal:             &isReal.Bool,
-			ImageURL:           &imageURL.String,
+		dto := StudioDTO{}
+		if ID.Valid {
+			dto.ID = ID.Int64
+		}
+		if externalID.Valid {
+			dto.ExternalID = externalID.String
+		}
+		if name.Valid {
+			dto.Name = &name.String
+		}
+		if filteredName.Valid {
+			dto.FilteredStudioName = &filteredName.String
+		}
+		if isReal.Valid {
+			dto.IsReal = &isReal.Bool
+		}
+		if imageURL.Valid {
+			dto.ImageURL = &imageURL.String
 		}
 		dtos = append(dtos, dto)
 	}

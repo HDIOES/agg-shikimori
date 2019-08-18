@@ -14,6 +14,7 @@ import (
 	"github.com/HDIOES/cpa-backend/rest/util"
 	"github.com/gorilla/mux"
 	"github.com/ory/dockertest"
+	"github.com/pkg/errors"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/tkanos/gonfig"
 	"go.uber.org/dig"
@@ -50,7 +51,7 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		if test {
 			pool, err := dockertest.NewPool("")
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, errors.Wrap(err, "")
 			}
 			resource, rErr := pool.Run(dbType, dbVersion, []string{
 				dbUserVar,
@@ -60,7 +61,7 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 			time.Sleep(10 * time.Second)
 			if rErr != nil {
 				defer resource.Close()
-				return nil, nil, rErr
+				return nil, nil, errors.Wrap(rErr, "")
 			}
 			configuration.DatabaseURL = fmt.Sprintf(dbURLTemplate, resource.GetPort(dbPortMapping))
 			log.Println("PORT = " + resource.GetPort(dbPortMapping))
@@ -87,7 +88,7 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		if n, err := migrate.Exec(db, "postgres", migrations, migrate.Up); err == nil {
 			log.Printf("Applied %d migrations!\n", n)
 		} else {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "")
 		}
 		sqlDb = db
 		return

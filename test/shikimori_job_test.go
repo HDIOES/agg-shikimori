@@ -1,8 +1,13 @@
 package test
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/HDIOES/cpa-backend/models"
 	"github.com/pkg/errors"
@@ -61,5 +66,66 @@ func TestShikimoriJobSuccess(t *testing.T) {
 			JSON(oneAnimeData)
 
 		job.Run()
+
+		//asserts
+		anime := integration.Anime{}
+		genres := []integration.Genre{}
+		studios := []integration.Studio{}
+		if unmarshalAnimeErr := json.Unmarshal(oneAnimeData, &anime); unmarshalAnimeErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(unmarshalAnimeErr, ""))
+		}
+		if unmarshalGenresErr := json.Unmarshal(genresData, &genres); unmarshalGenresErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(unmarshalGenresErr, ""))
+		}
+		if unmarshalStudioErr := json.Unmarshal(studiosData, &studios); unmarshalStudioErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(unmarshalStudioErr, ""))
+		}
+		for _, g := range genres {
+			genreDto, genreDtoErr := genreDao.FindByExternalID(strconv.FormatInt(*g.ID, 10))
+			if genreDtoErr != nil {
+				markAsFailAndAbortNow(t, errors.Wrap(genreDtoErr, ""))
+			}
+			abortIfFail(t, assert.Equal(t, strconv.FormatInt(*g.ID, 10), genreDto.ExternalID))
+			abortIfFail(t, EqualStringValues(t, g.Kind, genreDto.Kind))
+			abortIfFail(t, EqualStringValues(t, g.Name, genreDto.Name))
+			abortIfFail(t, EqualStringValues(t, g.Russian, genreDto.Russian))
+		}
+		for _, s := range studios {
+			studioDto, studioDtoErr := studioDao.FindByExternalID(strconv.FormatInt(*s.ID, 10))
+			if studioDtoErr != nil {
+				markAsFailAndAbortNow(t, errors.Wrap(studioDtoErr, ""))
+			}
+			abortIfFail(t, assert.Equal(t, strconv.FormatInt(*s.ID, 10), studioDto.ExternalID))
+			abortIfFail(t, EqualStringValues(t, s.FilteredName, studioDto.FilteredStudioName))
+			abortIfFail(t, EqualStringValues(t, s.Image, studioDto.ImageURL))
+			abortIfFail(t, EqualStringValues(t, s.Name, studioDto.Name))
+			abortIfFail(t, EqualBoolValues(t, s.Real, studioDto.IsReal))
+		}
+		animeDto, animeDtoErr := animeDao.FindByExternalID(strconv.FormatInt(*anime.ID, 10))
+		if animeDtoErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(animeDtoErr, ""))
+		}
+		abortIfFail(t, assert.Equal(t, strconv.FormatInt(*anime.ID, 10), animeDto.ExternalID))
+		abortIfFail(t, EqualStringValues(t, anime.Name, animeDto.Name))
+		abortIfFail(t, EqualStringValues(t, anime.Russian, animeDto.Russian))
+		abortIfFail(t, EqualStringValues(t, anime.URL, animeDto.AnimeURL))
+		abortIfFail(t, EqualStringValues(t, anime.Kind, animeDto.Kind))
+		abortIfFail(t, EqualStringValues(t, anime.Status, animeDto.Status))
+		abortIfFail(t, EqualInt64Values(t, anime.Episodes, animeDto.Epizodes))
+		abortIfFail(t, EqualInt64Values(t, anime.EpisodesAired, animeDto.EpizodesAired))
+		//ReleasedOn
+		//AiredOn
+		abortIfFail(t, EqualStringValues(t, anime.Image.Original, animeDto.PosterURL))
+		abortIfFail(t, assert.NotNil(t, animeDto.Score))
+		dbScore := fmt.Sprintf("%.2f", *animeDto.Score)
+		abortIfFail(t, EqualStringValues(t, anime.Score, &dbScore))
+		abortIfFail(t, assert.NotNil(t, animeDto.Duration))
+		dbDuration := int64(*animeDto.Duration)
+		abortIfFail(t, EqualInt64Values(t, anime.Duration, &dbDuration))
+		abortIfFail(t, EqualStringValues(t, anime.Rating, animeDto.Rating))
+		abortIfFail(t, EqualStringValues(t, anime.Franchise, animeDto.Franchise))
+		abortIfFail(t, assert.NotNil(t, animeDto.Processed))
+		processed := true
+		abortIfFail(t, EqualBoolValues(t, &processed, animeDto.Processed))
 	})
 }

@@ -117,6 +117,8 @@ func (sj *ShikimoriJob) ProcessOneAnime(client *http.Client, animeDto models.Ani
 		durationFloat := float64(*anime.Duration)
 		animeDto.Duration = &durationFloat
 	}
+	processed := true
+	animeDto.Processed = &processed
 	//then we need to update row in database
 	updateErr := sj.AnimeDao.Update(animeDto)
 	if updateErr != nil {
@@ -165,7 +167,10 @@ func (sj *ShikimoriJob) ProcessGenres(client *http.Client) error {
 	for _, genre := range genres {
 		externalID := strconv.FormatInt(*genre.ID, 10)
 		genreDto, dtoErr := sj.GenreDao.FindByExternalID(externalID)
-		genreNotFound := strings.Compare(dtoErr.Error(), "Genre not found") == 0
+		genreNotFound := true
+		if genreNotFound {
+			genreNotFound = strings.Compare(dtoErr.Error(), "Genre not found") == 0
+		}
 		dto := models.GenreDTO{}
 		dto.ExternalID = externalID
 		dto.Name = genre.Name
@@ -207,7 +212,10 @@ func (sj *ShikimoriJob) ProcessStudios(client *http.Client) error {
 	for _, shikiStudio := range studios {
 		externalID := strconv.FormatInt(*shikiStudio.ID, 10)
 		studioDto, findErr := sj.StudioDao.FindByExternalID(externalID)
-		studioNotFound := strings.Compare(findErr.Error(), "Studio not found") == 0
+		studioNotFound := true
+		if findErr != nil {
+			studioNotFound = strings.Compare(findErr.Error(), "Studio not found") == 0
+		}
 		dto := models.StudioDTO{
 			ExternalID:         externalID,
 			Name:               shikiStudio.Name,
@@ -268,8 +276,10 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) ([]An
 
 		processed := false
 		dto.Processed = &processed
-
-		animeNotFound := strings.Compare(animeDtoErr.Error(), "Anime not found") == 0
+		animeNotFound := true
+		if animeDtoErr != nil {
+			animeNotFound = strings.Compare(animeDtoErr.Error(), "Anime not found") == 0
+		}
 		if animeNotFound {
 			if _, createErr := sj.AnimeDao.Create(dto); createErr != nil {
 				return nil, errors.Wrap(createErr, "")
@@ -287,9 +297,9 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) ([]An
 
 func rollbackTransaction(tx *sql.Tx, err error) error {
 	if rollbackErr := tx.Rollback(); err != nil {
-		return rollbackErr
+		return errors.Wrap(rollbackErr, "")
 	}
-	return err
+	return errors.Wrap(err, "")
 }
 
 //Anime struct
