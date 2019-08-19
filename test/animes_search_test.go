@@ -3,6 +3,7 @@ package test
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -99,10 +100,51 @@ func TestSearchAnimesSuccess(t *testing.T) {
 }
 
 func TestSearchAnimes_pagingSuccess(t *testing.T) {
+	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
+		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		prepareTestData(t, animeDao, genreDao, studioDao)
 
+		animeName := "One Punch Man"
+		russianAnimeName := "Один Удар Человек"
+		animeURL := "/url.jpg"
+		animePostreURL := "/url.jpg"
+
+		//create request
+		request, err := http.NewRequest("GET", "/api/animes/search?limit=2&offset=2", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		recorder := executeRequest(request, router)
+		//asserts
+		abortIfFail(t, assert.Equal(t, 200, recorder.Code))
+		//form expected data
+		expectedAnimesRos := make([]rest.AnimeRO, 0, 10)
+		//form expected items
+		for i := 2; i < 4; i++ {
+			animePosterURLRO := configuration.ShikimoriURL + animePostreURL
+			animeURLRO := configuration.ShikimoriURL + animeURL
+			animeRO := rest.AnimeRO{
+				Name:        &animeName,
+				RussuanName: &russianAnimeName,
+				URL:         &animeURLRO,
+				PosterURL:   &animePosterURLRO,
+			}
+			expectedAnimesRos = append(expectedAnimesRos, animeRO)
+		}
+		//get actual data
+		actualJSONResponseBody := recorder.Body.String()
+		expectedJSONResponseBodyBytes, marshalErr := json.Marshal(&expectedAnimesRos)
+		if marshalErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(marshalErr, ""))
+		}
+		abortIfFail(t, assert.JSONEq(t, string(expectedJSONResponseBodyBytes), actualJSONResponseBody))
+	})
 }
 
 func TestSearchAnimes_byStatusSuccess(t *testing.T) {
+
 }
 
 func TestSearchAnimes_byKindSuccess(t *testing.T) {
@@ -177,4 +219,84 @@ func TestRandom_scoreFail(t *testing.T) {
 		recorder := executeRequest(request, router)
 		assert.Equal(t, 400, recorder.Code)
 	})
+}
+
+//prepareTestData prepares test data in db includes 10 animes with different externalId, 1 genre and 1 studio
+func prepareTestData(t *testing.T, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) {
+	externalGenreID := "1"
+	externalStudioID := "1"
+
+	genreName := "trashcore"
+	genreRussianName := "трешкор"
+	genreKind := "tv"
+
+	studioName := "trash studio"
+	russianStudioName := "треш студия"
+	isReal := false
+	imageURL := "/url.jpg"
+
+	//fill database by genre and studio
+	genreID, insertGenreErr := insertGenreToDatabase(genreDao, externalGenreID, &genreName, &genreRussianName, &genreKind)
+	if insertGenreErr != nil {
+		markAsFailAndAbortNow(t, errors.Wrap(insertGenreErr, ""))
+	}
+	studioID, insertStudioErr := insertStudioToDatabase(studioDao, externalStudioID, &studioName, &russianStudioName, &isReal, &imageURL)
+	if insertStudioErr != nil {
+		markAsFailAndAbortNow(t, errors.Wrap(insertStudioErr, ""))
+	}
+
+	animeName := "One Punch Man"
+	russianAnimeName := "Один Удар Человек"
+	animeURL := "/url.jpg"
+	animeKind := "tv"
+	animeStatus := "ongoing"
+	animePostreURL := "/url.jpg"
+	var animeEpizodes int64 = 12
+	var animeEpizodesAired int64 = 6
+	airedOn := time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC)
+	releasedOn := time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC)
+	animeProcessed := false
+
+	testAnimeDto1 := models.AnimeDTO{}
+
+	testAnimeDto2 := models.AnimeDTO{}
+
+	testAnimeDto3 := models.AnimeDTO{}
+
+	testAnimeDto4 := models.AnimeDTO{}
+
+	testAnimeDto5 := models.AnimeDTO{}
+
+	testAnimeDto6 := models.AnimeDTO{}
+
+	testAnimeDto7 := models.AnimeDTO{}
+
+	testAnimeDto8 := models.AnimeDTO{}
+
+	testAnimeDto9 := models.AnimeDTO{}
+
+	testAnimeDto10 := models.AnimeDTO{}
+
+	testAnimeDto11 := models.AnimeDTO{}
+
+	for i := 1; i < 11; i++ {
+		externalAnimeID := strconv.Itoa(i)
+
+		animeID, insertAnimeErr := insertAnimeToDatabase(animeDao, externalAnimeID, &animeName, &russianAnimeName, &animeURL, &animeKind, &animeStatus, &animeEpizodes, &animeEpizodesAired,
+			&airedOn,
+			&releasedOn, &animePostreURL, &animeProcessed)
+		if insertAnimeErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(insertAnimeErr, ""))
+		}
+		if linkAnimeAndGenreErr := linkAnimeAndGenre(animeDao, animeID, genreID); linkAnimeAndGenreErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(linkAnimeAndGenreErr, ""))
+		}
+		if linkAnimeAndStudioErr := linkAnimeAndStudio(animeDao, animeID, studioID); linkAnimeAndStudioErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(linkAnimeAndStudioErr, ""))
+		}
+	}
+}
+
+func formAnimeDto(externalId, animeName string) {
+
 }

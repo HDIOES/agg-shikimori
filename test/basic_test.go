@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/HDIOES/cpa-backend/models"
 	"github.com/HDIOES/cpa-backend/rest/util"
@@ -97,30 +96,7 @@ func linkAnimeAndGenre(animeDao *models.AnimeDAO, animeID int64, genreID int64) 
 }
 
 func insertAnimeToDatabase(
-	animeDao *models.AnimeDAO,
-	externalID string,
-	animeName,
-	russian,
-	animeURL,
-	kind,
-	animeStatus *string,
-	epizodes, epizodesAired *int64,
-	airedOn, releasedOn *time.Time,
-	posterURL *string,
-	processed *bool) (int64, error) {
-	animeDto := models.AnimeDTO{
-		Name:          animeName,
-		ExternalID:    externalID,
-		Russian:       russian,
-		AnimeURL:      animeURL,
-		Kind:          kind,
-		Status:        animeStatus,
-		Epizodes:      epizodes,
-		EpizodesAired: epizodesAired,
-		AiredOn:       airedOn,
-		ReleasedOn:    releasedOn,
-		PosterURL:     posterURL,
-	}
+	animeDao *models.AnimeDAO, animeDto models.AnimeDTO) (int64, error) {
 	id, err := animeDao.Create(animeDto)
 	if err != nil {
 		return 0, errors.Wrap(err, "")
@@ -128,32 +104,16 @@ func insertAnimeToDatabase(
 	return id, nil
 }
 
-func insertStudioToDatabase(studioDao *models.StudioDAO,
-	externalID string,
-	studioName,
-	filteredStudioName *string,
-	isReal *bool,
-	imageURL *string) (int64, error) {
-	id, err := studioDao.Create(models.StudioDTO{
-		Name:               studioName,
-		ExternalID:         externalID,
-		FilteredStudioName: filteredStudioName,
-		IsReal:             isReal,
-		ImageURL:           imageURL,
-	})
+func insertStudioToDatabase(studioDao *models.StudioDAO, studioDto models.StudioDTO) (int64, error) {
+	id, err := studioDao.Create(studioDto)
 	if err != nil {
 		return 0, errors.Wrap(err, "")
 	}
 	return id, nil
 }
 
-func insertGenreToDatabase(genreDao *models.GenreDAO, externalID string, genreName, russian, kind *string) (int64, error) {
-	id, err := genreDao.Create(models.GenreDTO{
-		ExternalID: externalID,
-		Name:       genreName,
-		Russian:    russian,
-		Kind:       kind,
-	})
+func insertGenreToDatabase(genreDao *models.GenreDAO, genreDto models.GenreDTO) (int64, error) {
+	id, err := genreDao.Create(genreDto)
 	if err != nil {
 		return 0, errors.Wrap(err, "")
 	}
