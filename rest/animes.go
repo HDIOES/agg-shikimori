@@ -97,7 +97,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	animeRos := []AnimeRO{}
 	for _, animeDto := range animeDtos {
-		animeRo := AnimeRO{Name: animeDto.Name, RussuanName: animeDto.Russian}
+		animeRo := AnimeRO{ShikiID: animeDto.ExternalID, Name: animeDto.Name, RussuanName: animeDto.Russian}
 		if animeDto.AnimeURL != nil {
 			shikiURL := as.Configuration.ShikimoriURL + *animeDto.AnimeURL
 			animeRo.URL = &shikiURL
@@ -115,6 +115,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 //AnimeRO is rest object
 type AnimeRO struct {
+	ShikiID     string  `json:"shiki_id"`
 	Name        *string `json:"name"`
 	RussuanName *string `json:"russian_name"`
 	URL         *string `json:"url"`

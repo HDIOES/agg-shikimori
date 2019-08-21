@@ -88,7 +88,7 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		HandleErr(errors.Wrap(err, ""), w, 400, "Internal error")
 		return
 	}
-	animeRo := AnimeRO{Name: animeDto.Name, RussuanName: animeDto.Russian, PosterURL: animeDto.PosterURL}
+	animeRo := AnimeRO{ShikiID: animeDto.ExternalID, Name: animeDto.Name, RussuanName: animeDto.Russian}
 	if animeDto.AnimeURL != nil {
 		shikiURL := rah.Configuration.ShikimoriURL + *animeDto.AnimeURL
 		animeRo.URL = &shikiURL
