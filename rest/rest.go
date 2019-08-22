@@ -24,8 +24,8 @@ func HandleErr(err error, w http.ResponseWriter, httpStatus int, errorMessage st
 
 //ReturnResponseAsJSON function
 func ReturnResponseAsJSON(w http.ResponseWriter, body interface{}, httpStatus int) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(httpStatus)
-	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(body); err != nil {
 		return errors.Wrap(err, "")
 	}
