@@ -88,7 +88,7 @@ func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			HandleErr(errors.Wrap(parseErr, ""), w, 400, "Offset not valid")
 			return
 		}
-		animeSQLBuilder.SetLimit(int32(offsetInt64))
+		animeSQLBuilder.SetOffset(int32(offsetInt64))
 	}
 	animeDtos, err := as.Dao.FindByFilter(animeSQLBuilder)
 	if err != nil {
