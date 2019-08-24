@@ -17,42 +17,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-/*func TestSearchAnimesSuccess(t *testing.T) {
-	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
-		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
-			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
-		}
-
-		prepareTestData(t, animeDao, genreDao, studioDao)
-		//create request
-		request, err := http.NewRequest("GET", "/api/animes/search", nil)
-		if err != nil {
-			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
-		}
-		recorder := executeRequest(request, router)
-		//asserts
-		abortIfFail(t, assert.Equal(t, 200, recorder.Code))
-		//get actual data
-		actualJSONResponseBody := recorder.Body.String()
-		//form expected data
-		animesRos := make([]rest.AnimeRO, 0, 1)
-		animePosterURLRO := configuration.ShikimoriURL + animePostreURL
-		animeURLRO := configuration.ShikimoriURL + animeURL
-		animeRO := rest.AnimeRO{
-			Name:        &animeName,
-			RussuanName: &russianAnimeName,
-			URL:         &animeURLRO,
-			PosterURL:   &animePosterURLRO,
-		}
-		animesRos = append(animesRos, animeRO)
-		expectedJSONResponseBodyBytes, marshalErr := json.Marshal(&animesRos)
-		if marshalErr != nil {
-			markAsFailAndAbortNow(t, errors.Wrap(marshalErr, ""))
-		}
-		abortIfFail(t, assert.JSONEq(t, string(expectedJSONResponseBodyBytes), actualJSONResponseBody))
-	})
-}*/
-
 func TestSearchAnimes_pagingSuccess(t *testing.T) {
 	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
 		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
