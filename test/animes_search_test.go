@@ -112,13 +112,161 @@ func TestSearchAnimes_pagingSuccess(t *testing.T) {
 }
 
 func TestSearchAnimes_byStatusSuccess(t *testing.T) {
+	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
+		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		prepareTestData(t, animeDao, genreDao, studioDao)
+		//create request
+		request, err := http.NewRequest("GET", "/api/animes/search?status=anons", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		recorder := executeRequest(request, router)
+		//asserts
+		abortIfFail(t, assert.Equal(t, 200, recorder.Code))
+		expectedAnimesRos := make([]rest.AnimeRO, 0, 1)
 
+		animeExternalID8 := "8"
+		animeName8 := "One Punch Man"
+		russianAnimeName8 := "Один Удар Человек"
+		animeURL8 := "/url.jpg"
+		animePostreURL8 := "/url.jpg"
+		animePosterURLRO8 := configuration.ShikimoriURL + animePostreURL8
+		animeURLRO8 := configuration.ShikimoriURL + animeURL8
+		animeRO8 := rest.AnimeRO{
+			ShikiID:     animeExternalID8,
+			Name:        &animeName8,
+			RussuanName: &russianAnimeName8,
+			URL:         &animeURLRO8,
+			PosterURL:   &animePosterURLRO8,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO8)
+
+		//get actual data
+		actualJSONResponseBody := recorder.Body.String()
+		expectedJSONResponseBodyBytes, marshalErr := json.Marshal(&expectedAnimesRos)
+		if marshalErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(marshalErr, ""))
+		}
+		abortIfFail(t, assert.JSONEq(t, string(expectedJSONResponseBodyBytes), actualJSONResponseBody))
+	})
 }
 
 func TestSearchAnimes_byKindSuccess(t *testing.T) {
+	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
+		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		prepareTestData(t, animeDao, genreDao, studioDao)
+		//create request
+		request, err := http.NewRequest("GET", "/api/animes/search?kind=movie", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		recorder := executeRequest(request, router)
+		//asserts
+		abortIfFail(t, assert.Equal(t, 200, recorder.Code))
+		expectedAnimesRos := make([]rest.AnimeRO, 0, 1)
+
+		animeExternalID10 := "10"
+		animeName10 := "One Punch Man"
+		russianAnimeName10 := "Один Удар Человек"
+		animeURL10 := "/url.jpg"
+		animePostreURL10 := "/url.jpg"
+		animePosterURLRO10 := configuration.ShikimoriURL + animePostreURL10
+		animeURLRO10 := configuration.ShikimoriURL + animeURL10
+		animeRO10 := rest.AnimeRO{
+			ShikiID:     animeExternalID10,
+			Name:        &animeName10,
+			RussuanName: &russianAnimeName10,
+			URL:         &animeURLRO10,
+			PosterURL:   &animePosterURLRO10,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO10)
+
+		//get actual data
+		actualJSONResponseBody := recorder.Body.String()
+		expectedJSONResponseBodyBytes, marshalErr := json.Marshal(&expectedAnimesRos)
+		if marshalErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(marshalErr, ""))
+		}
+		abortIfFail(t, assert.JSONEq(t, string(expectedJSONResponseBodyBytes), actualJSONResponseBody))
+	})
 }
 
 func TestSearchAnimes_byOrderSuccess(t *testing.T) {
+	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
+		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		prepareTestData(t, animeDao, genreDao, studioDao)
+		//create request
+		request, err := http.NewRequest("GET", "/api/animes/search?kind=movie&order=aired_on", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		recorder := executeRequest(request, router)
+		//asserts
+		abortIfFail(t, assert.Equal(t, 200, recorder.Code))
+		expectedAnimesRos := make([]rest.AnimeRO, 0, 1)
+
+		animeExternalID1 := "1"
+		animeName1 := "One Punch Man"
+		russianAnimeName1 := "Один Удар Человек"
+		animeURL1 := "/url.jpg"
+		animePostreURL1 := "/url.jpg"
+		animePosterURLRO1 := configuration.ShikimoriURL + animePostreURL1
+		animeURLRO1 := configuration.ShikimoriURL + animeURL1
+		animeRO1 := rest.AnimeRO{
+			ShikiID:     animeExternalID1,
+			Name:        &animeName1,
+			RussuanName: &russianAnimeName1,
+			URL:         &animeURLRO1,
+			PosterURL:   &animePosterURLRO1,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO1)
+
+		animeExternalID10 := "10"
+		animeName10 := "One Punch Man"
+		russianAnimeName10 := "Один Удар Человек"
+		animeURL10 := "/url.jpg"
+		animePostreURL10 := "/url.jpg"
+		animePosterURLRO10 := configuration.ShikimoriURL + animePostreURL10
+		animeURLRO10 := configuration.ShikimoriURL + animeURL10
+		animeRO10 := rest.AnimeRO{
+			ShikiID:     animeExternalID10,
+			Name:        &animeName10,
+			RussuanName: &russianAnimeName10,
+			URL:         &animeURLRO10,
+			PosterURL:   &animePosterURLRO10,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO10)
+
+		animeExternalID5 := "5"
+		animeName5 := "One Punch Man"
+		russianAnimeName5 := "Один Удар Человек"
+		animeURL5 := "/url.jpg"
+		animePostreURL5 := "/url.jpg"
+		animePosterURLRO5 := configuration.ShikimoriURL + animePostreURL5
+		animeURLRO5 := configuration.ShikimoriURL + animeURL5
+		animeRO5 := rest.AnimeRO{
+			ShikiID:     animeExternalID5,
+			Name:        &animeName5,
+			RussuanName: &russianAnimeName5,
+			URL:         &animeURLRO5,
+			PosterURL:   &animePosterURLRO5,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO5)
+
+		//get actual data
+		actualJSONResponseBody := recorder.Body.String()
+		expectedJSONResponseBodyBytes, marshalErr := json.Marshal(&expectedAnimesRos)
+		if marshalErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(marshalErr, ""))
+		}
+		abortIfFail(t, assert.JSONEq(t, string(expectedJSONResponseBodyBytes), actualJSONResponseBody))
+	})
 }
 
 func TestSearchAnimes_byScoreSuccess(t *testing.T) {
@@ -246,7 +394,7 @@ func buildAnime1(t *testing.T, animeDao *models.AnimeDAO, genreID int64, studioI
 	animeName1 := "One Punch Man"
 	animeRussianName1 := "Один Удар Человек"
 	animeURL1 := "/url.jpg"
-	animeKind1 := "tv"
+	animeKind1 := "movie"
 	animeStatus1 := "ongoing"
 	var animeEpizodes1 int64 = 12
 	var animeEpizodesAired1 int64 = 6
@@ -438,12 +586,12 @@ func buildAnime5(t *testing.T, animeDao *models.AnimeDAO, genreID int64, studioI
 	animeName5 := "One Punch Man"
 	animeRussianName5 := "Один Удар Человек"
 	animeURL5 := "/url.jpg"
-	animeKind5 := "tv"
+	animeKind5 := "movie"
 	animeStatus5 := "ongoing"
 	var animeEpizodes5 int64 = 55
 	var animeEpizodesAired5 int64 = 6
-	animeAiredOn5 := time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC)
-	animeReleasedOn5 := time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC)
+	animeAiredOn5 := time.Date(2011, 11, 17, 20, 20, 20, 0, time.UTC)
+	animeReleasedOn5 := time.Date(2011, 11, 17, 20, 20, 20, 0, time.UTC)
 	animePosterURL5 := "/url.jpg"
 	animeScore5 := 7.55
 	animeDuration5 := 50.0
@@ -583,7 +731,7 @@ func buildAnime8(t *testing.T, animeDao *models.AnimeDAO, genreID int64, studioI
 	animeRussianName8 := "Один Удар Человек"
 	animeURL8 := "/url.jpg"
 	animeKind8 := "tv"
-	animeStatus8 := "ongoing"
+	animeStatus8 := "anons"
 	var animeEpizodes8 int64 = 8
 	var animeEpizodesAired8 int64 = 8
 	animeAiredOn8 := time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC)
@@ -678,12 +826,12 @@ func buildAnime10(t *testing.T, animeDao *models.AnimeDAO, genreID int64, studio
 	animeName10 := "One Punch Man"
 	animeRussianName10 := "Один Удар Человек"
 	animeURL10 := "/url.jpg"
-	animeKind10 := "tv"
+	animeKind10 := "movie"
 	animeStatus10 := "ongoing"
 	var animeEpizodes10 int64 = 10
 	var animeEpizodesAired10 int64 = 10
-	animeAiredOn10 := time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC)
-	animeReleasedOn10 := time.Date(2009, 11, 17, 20, 20, 20, 0, time.UTC)
+	animeAiredOn10 := time.Date(2010, 11, 17, 20, 20, 20, 0, time.UTC)
+	animeReleasedOn10 := time.Date(2010, 11, 17, 20, 20, 20, 0, time.UTC)
 	animePosterURL10 := "/url.jpg"
 	animeScore10 := 7.12
 	animeDuration10 := 20.0

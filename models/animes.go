@@ -852,54 +852,32 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 		switch aqb.Order {
 		case "id":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "anime_external_id")
+				aqb.SQLQuery.WriteString("anime_external_id")
 			}
 		case "kind":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.kind")
+				aqb.SQLQuery.WriteString("animes.kind")
 			}
 		case "name":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.name")
+				aqb.SQLQuery.WriteString("animes.name")
 			}
 		case "aired_on":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.aired_on")
+				aqb.SQLQuery.WriteString("animes.aired_on")
 			}
 		case "episodes":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.epizodes")
+				aqb.SQLQuery.WriteString("animes.epizodes")
 			}
 		case "status":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.status")
+				aqb.SQLQuery.WriteString("animes.status")
 			}
 		case "relevance":
 			{
 				if len(aqb.Phrase) > 0 {
-					countOfParameter++
-					aqb.SQLQuery.WriteString("$")
-					aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-					args = append(args, "get_rank(animes.russian_tsvector, animes.english_tsvector, animes.ts_query) DESC")
+					aqb.SQLQuery.WriteString("get_rank(animes.russian_tsvector, animes.english_tsvector, animes.ts_query) DESC")
 				}
 			}
 		}
