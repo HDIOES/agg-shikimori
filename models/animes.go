@@ -290,8 +290,10 @@ func (dao *AnimeDAO) Create(anime AnimeDTO) (int64, error) {
 	if result.Next() {
 		result.Scan(&ID)
 	}
-	defer result.Close()
-	defer commitTransaction(tx)
+	result.Close()
+	if commitErr := tx.Commit(); commitErr != nil {
+		return 0, rollbackTransaction(tx, errors.Wrap(commitErr, ""))
+	}
 	return ID.Int64, nil
 }
 
@@ -586,7 +588,7 @@ func (aqb *AnimeQueryBuilder) AddStudioID(studioID string) {
 
 //AddGenreID function
 func (aqb *AnimeQueryBuilder) AddGenreID(genreID string) {
-	aqb.GenreIds = append(aqb.GenreIds)
+	aqb.GenreIds = append(aqb.GenreIds, genreID)
 }
 
 //SetScore function
@@ -786,7 +788,6 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 	}
 	if len(aqb.ExcludeIds) > 0 {
 		aqb.SQLQuery.WriteString(" AND anime_external_id NOT IN (")
-		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
 		for ind, excludeID := range aqb.ExcludeIds {
 			countOfParameter++
 			args = append(args, excludeID)
@@ -802,11 +803,11 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 		switch aqb.Duration {
 		case "S":
 			{
-				aqb.SQLQuery.WriteString(" AND animes.duration < 10")
+				aqb.SQLQuery.WriteString(" AND animes.duration <= 10")
 			}
 		case "D":
 			{
-				aqb.SQLQuery.WriteString(" AND animes.duration < 30")
+				aqb.SQLQuery.WriteString(" AND animes.duration < 30 AND animes.duration >= 10")
 			}
 		case "F":
 			{
@@ -850,54 +851,32 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 		switch aqb.Order {
 		case "id":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "anime_external_id")
+				aqb.SQLQuery.WriteString("anime_external_id")
 			}
 		case "kind":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.kind")
+				aqb.SQLQuery.WriteString("animes.kind")
 			}
 		case "name":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.name")
+				aqb.SQLQuery.WriteString("animes.name")
 			}
 		case "aired_on":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.aired_on")
+				aqb.SQLQuery.WriteString("animes.aired_on")
 			}
 		case "episodes":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.epizodes")
+				aqb.SQLQuery.WriteString("animes.epizodes")
 			}
 		case "status":
 			{
-				countOfParameter++
-				aqb.SQLQuery.WriteString("$")
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-				args = append(args, "animes.status")
+				aqb.SQLQuery.WriteString("animes.status")
 			}
 		case "relevance":
 			{
 				if len(aqb.Phrase) > 0 {
-					countOfParameter++
-					aqb.SQLQuery.WriteString("$")
-					aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
-					args = append(args, "get_rank(animes.russian_tsvector, animes.english_tsvector, animes.ts_query) DESC")
+					aqb.SQLQuery.WriteString("get_rank(animes.russian_tsvector, animes.english_tsvector, animes.ts_query) DESC")
 				}
 			}
 		}
