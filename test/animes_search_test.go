@@ -667,9 +667,117 @@ func TestSearchAnimes_byFranchiseSuccess(t *testing.T) {
 }
 
 func TestSearchAnimes_byIdsSuccess(t *testing.T) {
+	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
+		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		prepareTestData(t, animeDao, genreDao, studioDao)
+		//create request
+		request, err := http.NewRequest("GET", "/api/animes/search?ids=2,10", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		recorder := executeRequest(request, router)
+		//asserts
+		abortIfFail(t, assert.Equal(t, 200, recorder.Code))
+		expectedAnimesRos := make([]rest.AnimeRO, 0, 2)
+
+		animeExternalID2 := "2"
+		animeName2 := "One Punch Man"
+		russianAnimeName2 := "Один Удар Человек"
+		animeURL2 := "/url.jpg"
+		animePostreURL2 := "/url.jpg"
+		animePosterURLRO2 := configuration.ShikimoriURL + animePostreURL2
+		animeURLRO2 := configuration.ShikimoriURL + animeURL2
+		animeRO2 := rest.AnimeRO{
+			ShikiID:     animeExternalID2,
+			Name:        &animeName2,
+			RussuanName: &russianAnimeName2,
+			URL:         &animeURLRO2,
+			PosterURL:   &animePosterURLRO2,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO2)
+
+		animeExternalID10 := "10"
+		animeName10 := "One Punch Man"
+		russianAnimeName10 := "Один Удар Человек"
+		animeURL10 := "/url.jpg"
+		animePostreURL10 := "/url.jpg"
+		animePosterURLRO10 := configuration.ShikimoriURL + animePostreURL10
+		animeURLRO10 := configuration.ShikimoriURL + animeURL10
+		animeRO10 := rest.AnimeRO{
+			ShikiID:     animeExternalID10,
+			Name:        &animeName10,
+			RussuanName: &russianAnimeName10,
+			URL:         &animeURLRO10,
+			PosterURL:   &animePosterURLRO10,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO10)
+		//get actual data
+		actualJSONResponseBody := recorder.Body.String()
+		expectedJSONResponseBodyBytes, marshalErr := json.Marshal(&expectedAnimesRos)
+		if marshalErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(marshalErr, ""))
+		}
+		abortIfFail(t, assert.JSONEq(t, string(expectedJSONResponseBodyBytes), actualJSONResponseBody))
+	})
 }
 
 func TestSearchAnimes_byExludeIdsSuccess(t *testing.T) {
+	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, router *mux.Router) {
+		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		prepareTestData(t, animeDao, genreDao, studioDao)
+		//create request
+		request, err := http.NewRequest("GET", "/api/animes/search?exclude_ids=1,2,3,4,5,8,9,10", nil)
+		if err != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
+		}
+		recorder := executeRequest(request, router)
+		//asserts
+		abortIfFail(t, assert.Equal(t, 200, recorder.Code))
+		expectedAnimesRos := make([]rest.AnimeRO, 0, 2)
+
+		animeExternalID6 := "6"
+		animeName6 := "One Punch Man"
+		russianAnimeName6 := "Один Удар Человек"
+		animeURL6 := "/url.jpg"
+		animePostreURL6 := "/url.jpg"
+		animePosterURLRO6 := configuration.ShikimoriURL + animePostreURL6
+		animeURLRO6 := configuration.ShikimoriURL + animeURL6
+		animeRO6 := rest.AnimeRO{
+			ShikiID:     animeExternalID6,
+			Name:        &animeName6,
+			RussuanName: &russianAnimeName6,
+			URL:         &animeURLRO6,
+			PosterURL:   &animePosterURLRO6,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO6)
+
+		animeExternalID7 := "7"
+		animeName7 := "One Punch Man"
+		russianAnimeName7 := "Один Удар Человек"
+		animeURL7 := "/url.jpg"
+		animePostreURL7 := "/url.jpg"
+		animePosterURLRO7 := configuration.ShikimoriURL + animePostreURL7
+		animeURLRO7 := configuration.ShikimoriURL + animeURL7
+		animeRO7 := rest.AnimeRO{
+			ShikiID:     animeExternalID7,
+			Name:        &animeName7,
+			RussuanName: &russianAnimeName7,
+			URL:         &animeURLRO7,
+			PosterURL:   &animePosterURLRO7,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO7)
+		//get actual data
+		actualJSONResponseBody := recorder.Body.String()
+		expectedJSONResponseBodyBytes, marshalErr := json.Marshal(&expectedAnimesRos)
+		if marshalErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(marshalErr, ""))
+		}
+		abortIfFail(t, assert.JSONEq(t, string(expectedJSONResponseBodyBytes), actualJSONResponseBody))
+	})
 }
 
 func TestSearchAnimes_limitFail(t *testing.T) {

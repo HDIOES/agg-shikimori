@@ -788,7 +788,6 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 	}
 	if len(aqb.ExcludeIds) > 0 {
 		aqb.SQLQuery.WriteString(" AND anime_external_id NOT IN (")
-		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
 		for ind, excludeID := range aqb.ExcludeIds {
 			countOfParameter++
 			args = append(args, excludeID)
