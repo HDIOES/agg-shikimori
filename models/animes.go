@@ -588,7 +588,7 @@ func (aqb *AnimeQueryBuilder) AddStudioID(studioID string) {
 
 //AddGenreID function
 func (aqb *AnimeQueryBuilder) AddGenreID(genreID string) {
-	aqb.GenreIds = append(aqb.GenreIds)
+	aqb.GenreIds = append(aqb.GenreIds, genreID)
 }
 
 //SetScore function
@@ -804,11 +804,11 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 		switch aqb.Duration {
 		case "S":
 			{
-				aqb.SQLQuery.WriteString(" AND animes.duration < 10")
+				aqb.SQLQuery.WriteString(" AND animes.duration <= 10")
 			}
 		case "D":
 			{
-				aqb.SQLQuery.WriteString(" AND animes.duration < 30")
+				aqb.SQLQuery.WriteString(" AND animes.duration < 30 AND animes.duration >= 10")
 			}
 		case "F":
 			{
