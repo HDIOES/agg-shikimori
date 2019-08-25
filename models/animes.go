@@ -639,9 +639,26 @@ func (aqb *AnimeQueryBuilder) SetRowNumber(rowNumber int64) {
 //Build function
 func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 	if aqb.CountOnly {
-		aqb.SQLQuery.WriteString("SELECT COUNT(*) FROM (")
+		aqb.SQLQuery.WriteString("SELECT COUNT(DISTINCT ")
+		aqb.SQLQuery.WriteString("query.anime_internal_id,")
+		aqb.SQLQuery.WriteString("query.name,")
+		aqb.SQLQuery.WriteString("query.anime_external_id,")
+		aqb.SQLQuery.WriteString("query.russian,")
+		aqb.SQLQuery.WriteString("query.amine_url,")
+		aqb.SQLQuery.WriteString("query.kind,")
+		aqb.SQLQuery.WriteString("query.anime_status,")
+		aqb.SQLQuery.WriteString("query.epizodes,")
+		aqb.SQLQuery.WriteString("query.epizodes_aired,")
+		aqb.SQLQuery.WriteString("query.aired_on,")
+		aqb.SQLQuery.WriteString("query.released_on,")
+		aqb.SQLQuery.WriteString("query.poster_url,")
+		aqb.SQLQuery.WriteString("query.score,")
+		aqb.SQLQuery.WriteString("query.duration,")
+		aqb.SQLQuery.WriteString("query.rating,")
+		aqb.SQLQuery.WriteString("query.franchase,")
+		aqb.SQLQuery.WriteString("query.processed) FROM (")
 	} else {
-		aqb.SQLQuery.WriteString("SELECT ")
+		aqb.SQLQuery.WriteString("SELECT DISTINCT ")
 		aqb.SQLQuery.WriteString("query.anime_internal_id,")
 		aqb.SQLQuery.WriteString("query.name,")
 		aqb.SQLQuery.WriteString("query.anime_external_id,")
