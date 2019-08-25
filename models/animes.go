@@ -639,9 +639,9 @@ func (aqb *AnimeQueryBuilder) SetRowNumber(rowNumber int64) {
 //Build function
 func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 	if aqb.CountOnly {
-		aqb.SQLQuery.WriteString("SELECT COUNT(*) FROM (")
+		aqb.SQLQuery.WriteString("SELECT COUNT(DISTINCT query.anime_internal_id) FROM (")
 	} else {
-		aqb.SQLQuery.WriteString("SELECT ")
+		aqb.SQLQuery.WriteString("SELECT DISTINCT ")
 		aqb.SQLQuery.WriteString("query.anime_internal_id,")
 		aqb.SQLQuery.WriteString("query.name,")
 		aqb.SQLQuery.WriteString("query.anime_external_id,")
