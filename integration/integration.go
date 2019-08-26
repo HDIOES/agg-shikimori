@@ -271,15 +271,19 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int64, client *http.Client) ([]An
 		dto.Epizodes = anime.Episodes
 		dto.EpizodesAired = anime.EpisodesAired
 
-		airedOn := anime.AiredOn.Local()
-		dto.AiredOn = &airedOn
+		if anime.AiredOn != nil {
+			airedOn := anime.AiredOn.Local()
+			dto.AiredOn = &airedOn
+		}
 
-		releasedOn := anime.ReleasedOn.Local()
-		dto.ReleasedOn = &releasedOn
+		if anime.ReleasedOn != nil {
+			releasedOn := anime.ReleasedOn.Local()
+			dto.ReleasedOn = &releasedOn
+		}
 
 		processed := false
 		dto.Processed = &processed
-		animeNotFound := true
+		animeNotFound := false
 		if animeDtoErr != nil {
 			animeNotFound = strings.Compare(animeDtoErr.Error(), "Anime not found") == 0
 		}
