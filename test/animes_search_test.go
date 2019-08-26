@@ -1480,3 +1480,53 @@ func buildAnime10(t *testing.T, animeDao *models.AnimeDAO, studioID int64, genre
 		markAsFailAndAbortNow(t, errors.Wrap(linkAnimeAndStudioErr, ""))
 	}
 }
+
+func buildAnime5114(t *testing.T, animeDao *models.AnimeDAO, studioID int64, genreIDs ...int64) {
+	//insert anime 5114 to database
+	animeExternalID5114 := "5114"
+	animeName5114 := "One Punch Man"
+	animeRussianName5114 := "Один Удар Человек"
+	animeURL5114 := "/url.jpg"
+	animeKind5114 := "movie"
+	animeStatus5114 := "ongoing"
+	var animeEpizodes5114 int64 = 10
+	var animeEpizodesAired5114 int64 = 10
+	animeAiredOn5114 := time.Date(2010, 11, 17, 20, 20, 20, 0, time.UTC)
+	animeReleasedOn5114 := time.Date(2010, 11, 17, 20, 20, 20, 0, time.UTC)
+	animePosterURL5114 := "/url.jpg"
+	animeScore5114 := 8.12
+	animeDuration5114 := 50.0
+	animeRating5114 := "r"
+	animeFranchise5114 := "TheFiveWeddedBrides"
+	animeProcessed5114 := false
+	testAnimeDto5114 := models.AnimeDTO{
+		ExternalID:    animeExternalID5114,
+		Name:          &animeName5114,
+		Russian:       &animeRussianName5114,
+		AnimeURL:      &animeURL5114,
+		Kind:          &animeKind5114,
+		Status:        &animeStatus5114,
+		Epizodes:      &animeEpizodes5114,
+		EpizodesAired: &animeEpizodesAired5114,
+		AiredOn:       &animeAiredOn5114,
+		ReleasedOn:    &animeReleasedOn5114,
+		PosterURL:     &animePosterURL5114,
+		Score:         &animeScore5114,
+		Duration:      &animeDuration5114,
+		Rating:        &animeRating5114,
+		Franchise:     &animeFranchise5114,
+		Processed:     &animeProcessed5114,
+	}
+	animeID5114, insertAnimeErr := insertAnimeToDatabase(animeDao, testAnimeDto5114)
+	if insertAnimeErr != nil {
+		markAsFailAndAbortNow(t, errors.Wrap(insertAnimeErr, ""))
+	}
+	for _, g := range genreIDs {
+		if linkAnimeAndGenreErr := linkAnimeAndGenre(animeDao, animeID5114, g); linkAnimeAndGenreErr != nil {
+			markAsFailAndAbortNow(t, errors.Wrap(linkAnimeAndGenreErr, ""))
+		}
+	}
+	if linkAnimeAndStudioErr := linkAnimeAndStudio(animeDao, animeID5114, studioID); linkAnimeAndStudioErr != nil {
+		markAsFailAndAbortNow(t, errors.Wrap(linkAnimeAndStudioErr, ""))
+	}
+}
