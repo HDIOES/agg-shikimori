@@ -21,7 +21,7 @@ import (
 
 //TestSimple function
 func TestShikimoriJobSuccess(t *testing.T) {
-	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO) {
+	diContainer.Invoke(func(configuration *util.Configuration, job *integration.ShikimoriJob, newDao *models.NewDAO, animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, shikimoriDao *integration.ShikimoriDao) {
 		if err := clearDb(newDao, animeDao, genreDao, studioDao); err != nil {
 			markAsFailAndAbortNow(t, errors.Wrap(err, ""))
 		}

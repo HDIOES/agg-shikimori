@@ -36,12 +36,8 @@ func main() {
 		log.Println("Job has been runned")
 	})
 
-	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
-	originsOk := handlers.AllowedOrigins([]string{"*"})
-	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-
 	di.Invoke(func(router *mux.Router, configuration *util.Configuration) {
-		listenandserveErr := http.ListenAndServe(":"+strconv.Itoa(configuration.Port), handlers.CORS(originsOk, headersOk, methodsOk)(router))
+		listenandserveErr := http.ListenAndServe(":"+strconv.Itoa(configuration.Port), handlers.CombinedLoggingHandler(os.Stdout, router))
 		if listenandserveErr != nil {
 			panic(listenandserveErr)
 		}
