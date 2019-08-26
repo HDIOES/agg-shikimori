@@ -93,13 +93,17 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		sqlDb = db
 		return
 	})
-
 	container.Provide(func(db *sql.DB) (*models.AnimeDAO, *models.GenreDAO, *models.StudioDAO, *models.NewDAO) {
 		return &models.AnimeDAO{Db: db}, &models.GenreDAO{Db: db}, &models.StudioDAO{Db: db}, &models.NewDAO{Db: db}
 	})
-	container.Provide(func(animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, configuration *util.Configuration) *integration.ShikimoriJob {
+	container.Provide(func(configuration *util.Configuration) *integration.ShikimoriDao {
+		client := &http.Client{}
+		shikimoriDao := integration.ShikimoriDao{Client: client, Config: configuration}
+		return &shikimoriDao
+	})
+	container.Provide(func(animeDao *models.AnimeDAO, genreDao *models.GenreDAO, studioDao *models.StudioDAO, configuration *util.Configuration, shikimoriDao *integration.ShikimoriDao) *integration.ShikimoriJob {
 		log.Println("Prepare shikimori job")
-		return &integration.ShikimoriJob{AnimeDao: animeDao, GenreDao: genreDao, StudioDao: studioDao, Config: configuration}
+		return &integration.ShikimoriJob{AnimeDao: animeDao, GenreDao: genreDao, StudioDao: studioDao, Config: configuration, ShikimoriDao: shikimoriDao}
 	})
 	container.Provide(func(
 		animeDao *models.AnimeDAO,
