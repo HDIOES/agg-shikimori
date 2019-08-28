@@ -151,3 +151,20 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 	})
 	return container
 }
+
+//LoggingRoundTripper struct
+type LoggingRoundTripper struct {
+	Proxied http.RoundTripper
+}
+
+//RoundTrip func
+func (lrt LoggingRoundTripper) RoundTrip(req *http.Request) (res *http.Response, e error) {
+	log.Printf("Sending request to %v\n", req.URL)
+	res, e = lrt.Proxied.RoundTrip(req)
+	if e != nil {
+		log.Printf("Error: %v", e)
+	} else {
+		log.Printf("Received %v response\n", res.Status)
+	}
+	return
+}

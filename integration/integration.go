@@ -146,19 +146,22 @@ func (sj *ShikimoriJob) ProcessGenres() error {
 		if dtoErr != nil {
 			genreNotFound = strings.Compare(dtoErr.Error(), "Genre not found") == 0
 		}
-		dto := models.GenreDTO{}
-		dto.ExternalID = externalID
-		dto.Name = genre.Name
-		dto.Russian = genre.Russian
-		dto.Kind = genre.Kind
 		if genreNotFound {
+			dto := models.GenreDTO{}
+			dto.ExternalID = externalID
+			dto.Name = genre.Name
+			dto.Russian = genre.Russian
+			dto.Kind = genre.Kind
 			_, createErr := sj.GenreDao.Create(dto)
 			if createErr != nil {
 				return errors.Wrap(createErr, "")
 			}
 		} else {
-			dto.ID = genreDto.ID
-			updateErr := sj.GenreDao.Update(dto)
+			genreDto.ExternalID = externalID
+			genreDto.Name = genre.Name
+			genreDto.Russian = genre.Russian
+			genreDto.Kind = genre.Kind
+			updateErr := sj.GenreDao.Update(*genreDto)
 			if updateErr != nil {
 				return errors.Wrap(updateErr, "")
 			}
@@ -181,20 +184,24 @@ func (sj *ShikimoriJob) ProcessStudios() error {
 		if findErr != nil {
 			studioNotFound = strings.Compare(findErr.Error(), "Studio not found") == 0
 		}
-		dto := models.StudioDTO{
-			ExternalID:         externalID,
-			Name:               shikiStudio.Name,
-			FilteredStudioName: shikiStudio.FilteredName,
-			IsReal:             shikiStudio.Real,
-			ImageURL:           shikiStudio.Image,
-		}
 		if studioNotFound {
+			dto := models.StudioDTO{
+				ExternalID:         externalID,
+				Name:               shikiStudio.Name,
+				FilteredStudioName: shikiStudio.FilteredName,
+				IsReal:             shikiStudio.Real,
+				ImageURL:           shikiStudio.Image,
+			}
 			if _, createErr := sj.StudioDao.Create(dto); createErr != nil {
 				return errors.Wrap(createErr, "")
 			}
 		} else {
-			dto.ID = studioDto.ID
-			if updateErr := sj.StudioDao.Update(dto); updateErr != nil {
+			studioDto.ExternalID = strconv.FormatInt(*shikiStudio.ID, 10)
+			studioDto.Name = shikiStudio.Name
+			studioDto.FilteredStudioName = shikiStudio.FilteredName
+			studioDto.IsReal = shikiStudio.Real
+			studioDto.ImageURL = shikiStudio.Image
+			if updateErr := sj.StudioDao.Update(*studioDto); updateErr != nil {
 				return errors.Wrap(updateErr, "")
 			}
 		}
@@ -211,41 +218,55 @@ func (sj *ShikimoriJob) ProcessAnimePatch(page int) ([]Anime, error) {
 	}
 	for _, anime := range animes {
 		animeDto, animeDtoErr := sj.AnimeDao.FindByExternalID(strconv.FormatInt(*anime.ID, 10))
-		dto := models.AnimeDTO{}
-		dto.ExternalID = strconv.FormatInt(*anime.ID, 10)
-		dto.Name = anime.Name
-		dto.Russian = anime.Russian
-		dto.Kind = anime.Kind
-		dto.PosterURL = anime.Image.Original
-		dto.AnimeURL = anime.URL
-		dto.Kind = anime.Kind
-		dto.Status = anime.Status
-		dto.Epizodes = anime.Episodes
-		dto.EpizodesAired = anime.EpisodesAired
-
-		if anime.AiredOn != nil {
-			airedOn := anime.AiredOn.Local()
-			dto.AiredOn = &airedOn
-		}
-
-		if anime.ReleasedOn != nil {
-			releasedOn := anime.ReleasedOn.Local()
-			dto.ReleasedOn = &releasedOn
-		}
-
-		processed := false
-		dto.Processed = &processed
 		animeNotFound := false
 		if animeDtoErr != nil {
 			animeNotFound = strings.Compare(animeDtoErr.Error(), "Anime not found") == 0
 		}
 		if animeNotFound {
+			dto := models.AnimeDTO{}
+			dto.ExternalID = strconv.FormatInt(*anime.ID, 10)
+			dto.Name = anime.Name
+			dto.Russian = anime.Russian
+			dto.Kind = anime.Kind
+			dto.PosterURL = anime.Image.Original
+			dto.AnimeURL = anime.URL
+			dto.Kind = anime.Kind
+			dto.Status = anime.Status
+			dto.Epizodes = anime.Episodes
+			dto.EpizodesAired = anime.EpisodesAired
+			if anime.AiredOn != nil {
+				airedOn := anime.AiredOn.Local()
+				dto.AiredOn = &airedOn
+			}
+			if anime.ReleasedOn != nil {
+				releasedOn := anime.ReleasedOn.Local()
+				dto.ReleasedOn = &releasedOn
+			}
+			processed := false
+			dto.Processed = &processed
 			if _, createErr := sj.AnimeDao.Create(dto); createErr != nil {
 				return nil, errors.Wrap(createErr, "")
 			}
 		} else {
-			dto.ID = animeDto.ID
-			if updateErr := sj.AnimeDao.Update(dto); updateErr != nil {
+			animeDto.ExternalID = strconv.FormatInt(*anime.ID, 10)
+			animeDto.Name = anime.Name
+			animeDto.Russian = anime.Russian
+			animeDto.Kind = anime.Kind
+			animeDto.PosterURL = anime.Image.Original
+			animeDto.AnimeURL = anime.URL
+			animeDto.Kind = anime.Kind
+			animeDto.Status = anime.Status
+			animeDto.Epizodes = anime.Episodes
+			animeDto.EpizodesAired = anime.EpisodesAired
+			if anime.AiredOn != nil {
+				airedOn := anime.AiredOn.Local()
+				animeDto.AiredOn = &airedOn
+			}
+			if anime.ReleasedOn != nil {
+				releasedOn := anime.ReleasedOn.Local()
+				animeDto.ReleasedOn = &releasedOn
+			}
+			if updateErr := sj.AnimeDao.Update(*animeDto); updateErr != nil {
 				return nil, errors.Wrap(updateErr, "")
 			}
 		}
