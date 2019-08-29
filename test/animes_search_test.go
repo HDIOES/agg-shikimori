@@ -389,6 +389,22 @@ func TestSearchAnimes_byGenresIdsSuccess(t *testing.T) {
 		}
 		expectedAnimesRos = append(expectedAnimesRos, animeRO6)
 
+		animeExternalID9 := "9"
+		animeName9 := "One Punch Man"
+		russianAnimeName9 := "Один Удар Человек"
+		animeURL9 := "/url.jpg"
+		animePostreURL9 := "/url.jpg"
+		animePosterURLRO9 := configuration.ShikimoriURL + animePostreURL9
+		animeURLRO9 := configuration.ShikimoriURL + animeURL9
+		animeRO9 := rest.AnimeRO{
+			ShikiID:     animeExternalID9,
+			Name:        &animeName9,
+			RussuanName: &russianAnimeName9,
+			URL:         &animeURLRO9,
+			PosterURL:   &animePosterURLRO9,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO9)
+
 		//get actual data
 		actualJSONResponseBody := recorder.Body.String()
 		expectedJSONResponseBodyBytes, marshalErr := json.Marshal(&expectedAnimesRos)

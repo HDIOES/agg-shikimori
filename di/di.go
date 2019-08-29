@@ -98,6 +98,9 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 	})
 	container.Provide(func(configuration *util.Configuration) *integration.ShikimoriDao {
 		client := &http.Client{}
+		if !test {
+			client.Transport = &LoggingRoundTripper{Proxied: http.DefaultTransport}
+		}
 		shikimoriDao := integration.ShikimoriDao{Client: client, Config: configuration}
 		return &shikimoriDao
 	})

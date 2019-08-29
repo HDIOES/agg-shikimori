@@ -873,28 +873,60 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 			{
 				aqb.SQLQuery.WriteString("animes.status")
 			}
-		case "relevance":
+		}
+	}
+	orderByString := strings.Builder{}
+	orderByString.WriteString("")
+	if len(aqb.Order) > 0 {
+		orderByString.WriteString(" ORDER BY ")
+		switch aqb.Order {
+		case "id":
 			{
-				if len(aqb.Phrase) > 0 {
-					aqb.SQLQuery.WriteString("get_rank(animes.russian_tsvector, animes.english_tsvector, animes.ts_query) DESC")
-				}
+				orderByString.WriteString("query.anime_external_id")
+			}
+		case "kind":
+			{
+				orderByString.WriteString("query.kind")
+			}
+		case "name":
+			{
+				orderByString.WriteString("query.name")
+			}
+		case "aired_on":
+			{
+				orderByString.WriteString("query.aired_on")
+			}
+		case "episodes":
+			{
+				orderByString.WriteString("query.epizodes")
+			}
+		case "status":
+			{
+				orderByString.WriteString("query.status")
 			}
 		}
 	}
 	if aqb.CountOnly {
 		aqb.SQLQuery.WriteString(") as query")
+		aqb.SQLQuery.WriteString(orderByString.String())
 	} else if aqb.RowNumber > 0 {
 		countOfParameter++
-		aqb.SQLQuery.WriteString(") as query where query.row_number = $")
+		aqb.SQLQuery.WriteString(") as query")
+		aqb.SQLQuery.WriteString(orderByString.String())
+		aqb.SQLQuery.WriteString(" where query.row_number = $")
 		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
 		args = append(args, aqb.RowNumber)
 	} else {
 		if aqb.Limit > 0 {
 			countOfParameter++
-			aqb.SQLQuery.WriteString(") as query LIMIT $" + strconv.Itoa(countOfParameter))
+			aqb.SQLQuery.WriteString(") as query")
+			aqb.SQLQuery.WriteString(orderByString.String())
+			aqb.SQLQuery.WriteString(" LIMIT $" + strconv.Itoa(countOfParameter))
 			args = append(args, aqb.Limit)
 		} else {
-			aqb.SQLQuery.WriteString(") as query LIMIT 50")
+			aqb.SQLQuery.WriteString(") as query")
+			aqb.SQLQuery.WriteString(orderByString.String())
+			aqb.SQLQuery.WriteString(" LIMIT 50")
 		}
 		if aqb.Offset > 0 {
 			countOfParameter++
