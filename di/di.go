@@ -1,8 +1,10 @@
 package di
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -97,9 +99,9 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		return &models.AnimeDAO{Db: db}, &models.GenreDAO{Db: db}, &models.StudioDAO{Db: db}, &models.NewDAO{Db: db}
 	})
 	container.Provide(func(configuration *util.Configuration) *integration.ShikimoriDao {
-		client := &http.Client{}
-		if !test {
-			client.Transport = &LoggingRoundTripper{Proxied: http.DefaultTransport}
+		//loging does'nt works with gock library
+		client := &http.Client{
+			Transport: LoggingRoundTripper{Proxied: http.DefaultTransport},
 		}
 		shikimoriDao := integration.ShikimoriDao{Client: client, Config: configuration}
 		return &shikimoriDao
@@ -167,7 +169,12 @@ func (lrt LoggingRoundTripper) RoundTrip(req *http.Request) (res *http.Response,
 	if e != nil {
 		log.Printf("Error: %v", e)
 	} else {
-		log.Printf("Received %v response\n", res.Status)
+		body, readErr := ioutil.ReadAll(res.Body)
+		res.Body = ioutil.NopCloser(bytes.NewReader(body))
+		if readErr != nil {
+			log.Printf("Error: %v", readErr)
+		}
+		log.Printf("Body - %v\n", string(body))
 	}
 	return
 }
