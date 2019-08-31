@@ -42,8 +42,10 @@ func ReturnResponseAsJSON(w http.ResponseWriter, body interface{}, httpStatus in
 }
 
 func GetRequestData(r *http.Request) (requestBody []byte, rawQuery *string, headers http.Header, reqErr error) {
-	requestReader := r.Body
-	if requestBodyAsBytes, requestBodyErr := ioutil.ReadAll(requestReader); requestBodyErr != nil {
+	if r.Body == nil {
+		return nil, &r.URL.RawQuery, r.Header, nil
+	}
+	if requestBodyAsBytes, requestBodyErr := ioutil.ReadAll(r.Body); requestBodyErr != nil {
 		return nil, nil, nil, errors.WithStack(requestBodyErr)
 	} else {
 		return requestBodyAsBytes, &r.URL.RawQuery, r.Header, nil
@@ -51,17 +53,17 @@ func GetRequestData(r *http.Request) (requestBody []byte, rawQuery *string, head
 }
 
 func LogHTTPRequest(url string, headers http.Header, body interface{}) error {
-	const logLineTemplate = "Http request: Headers: %v Body: %v"
+	const logLineTemplate = "Http request: %v Headers: %v Body: %v"
 	if bodyAsBytes, ok := body.([]byte); ok {
-		log.Printf(logLineTemplate, headers, bodyAsBytes)
+		log.Printf(logLineTemplate, url, headers, bodyAsBytes)
 	} else if bodyAsString, ok := body.(string); ok {
-		log.Printf(logLineTemplate, headers, bodyAsString)
+		log.Printf(logLineTemplate, url, headers, bodyAsString)
 	} else {
 		bodyAsBytes, err := json.Marshal(body)
 		if err != nil {
 			return errors.Wrap(err, "")
 		}
-		log.Printf(logLineTemplate, headers, string(bodyAsBytes))
+		log.Printf(logLineTemplate, url, headers, string(bodyAsBytes))
 	}
 	return nil
 }

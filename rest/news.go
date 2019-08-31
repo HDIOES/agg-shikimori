@@ -16,12 +16,12 @@ type CreateNewHandler struct {
 }
 
 func (cnh *CreateNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	requestBody, rawQuery, headers, err := GetRequestData(r)
+	requestBody, _, headers, err := GetRequestData(r)
 	if err != nil {
 		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be read")
 		return
 	}
-	if err := LogHTTPRequest(*rawQuery, headers, requestBody); err != nil {
+	if err := LogHTTPRequest(r.URL.String(), headers, string(requestBody)); err != nil {
 		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be logged")
 		return
 	}
@@ -50,7 +50,7 @@ func (fnh *FindNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be read")
 		return
 	}
-	if err := LogHTTPRequest(*rawQuery, headers, requestBody); err != nil {
+	if err := LogHTTPRequest(r.URL.String(), headers, requestBody); err != nil {
 		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be logged")
 		return
 	}

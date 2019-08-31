@@ -20,7 +20,7 @@ func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be read")
 		return
 	}
-	if err := LogHTTPRequest(*rawQuery, headers, requestBody); err != nil {
+	if err := LogHTTPRequest(r.URL.String(), headers, requestBody); err != nil {
 		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be logged")
 		return
 	}
