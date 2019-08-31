@@ -14,8 +14,6 @@ import (
 
 	"github.com/robfig/cron"
 
-	"github.com/gorilla/handlers"
-
 	"github.com/HDIOES/cpa-backend/di"
 	"github.com/HDIOES/cpa-backend/integration"
 	"github.com/HDIOES/cpa-backend/rest/util"
@@ -37,7 +35,7 @@ func main() {
 	})
 
 	di.Invoke(func(router *mux.Router, configuration *util.Configuration) {
-		listenandserveErr := http.ListenAndServe(":"+strconv.Itoa(configuration.Port), handlers.CombinedLoggingHandler(os.Stdout, router))
+		listenandserveErr := http.ListenAndServe(":"+strconv.Itoa(configuration.Port), router)
 		if listenandserveErr != nil {
 			panic(listenandserveErr)
 		}

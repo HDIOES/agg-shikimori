@@ -2,6 +2,8 @@ package rest
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 
@@ -24,10 +26,58 @@ func HandleErr(err error, w http.ResponseWriter, httpStatus int, errorMessage st
 
 //ReturnResponseAsJSON function
 func ReturnResponseAsJSON(w http.ResponseWriter, body interface{}, httpStatus int) error {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	headers := make(map[string]string)
+	headers["Content-Type"] = "application/json; charset=utf-8"
+	if err := LogHTTPResponse(httpStatus, headers, body); err != nil {
+		return errors.Wrap(err, "")
+	}
+	for key, value := range headers {
+		w.Header().Set(key, value)
+	}
 	w.WriteHeader(httpStatus)
 	if err := json.NewEncoder(w).Encode(body); err != nil {
 		return errors.Wrap(err, "")
+	}
+	return nil
+}
+
+func GetRequestData(r *http.Request) (requestBody []byte, rawQuery *string, headers http.Header, reqErr error) {
+	requestReader := r.Body
+	if requestBodyAsBytes, requestBodyErr := ioutil.ReadAll(requestReader); requestBodyErr != nil {
+		return nil, nil, nil, errors.WithStack(requestBodyErr)
+	} else {
+		return requestBodyAsBytes, &r.URL.RawQuery, r.Header, nil
+	}
+}
+
+func LogHTTPRequest(url string, headers http.Header, body interface{}) error {
+	const logLineTemplate = "Http request: Headers: %v Body: %v"
+	if bodyAsBytes, ok := body.([]byte); ok {
+		log.Printf(logLineTemplate, headers, bodyAsBytes)
+	} else if bodyAsString, ok := body.(string); ok {
+		log.Printf(logLineTemplate, headers, bodyAsString)
+	} else {
+		bodyAsBytes, err := json.Marshal(body)
+		if err != nil {
+			return errors.Wrap(err, "")
+		}
+		log.Printf(logLineTemplate, headers, string(bodyAsBytes))
+	}
+	return nil
+}
+
+func LogHTTPResponse(httpStatus int, headers map[string]string, body interface{}) error {
+	const logLineTemplate = "Http response: Status: %v Headers: %v Body: %v"
+	if bodyAsBytes, ok := body.([]byte); ok {
+		log.Printf(logLineTemplate, httpStatus, headers, bodyAsBytes)
+	} else if bodyAsString, ok := body.(string); ok {
+		log.Printf(logLineTemplate, httpStatus, headers, bodyAsString)
+	} else {
+		bodyAsBytes, err := json.Marshal(body)
+		if err != nil {
+			return errors.Wrap(err, "")
+		}
+		log.Printf(logLineTemplate, httpStatus, headers, string(bodyAsBytes))
 	}
 	return nil
 }

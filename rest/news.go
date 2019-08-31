@@ -2,7 +2,6 @@ package rest
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -17,12 +16,17 @@ type CreateNewHandler struct {
 }
 
 func (cnh *CreateNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	body, ioErr := ioutil.ReadAll(r.Body)
-	if ioErr != nil {
-		HandleErr(errors.Wrap(ioErr, ""), w, 400, "Bad request")
+	requestBody, rawQuery, headers, err := GetRequestData(r)
+	if err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be read")
+		return
+	}
+	if err := LogHTTPRequest(*rawQuery, headers, requestBody); err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be logged")
+		return
 	}
 	new := &NewRo{}
-	if unmErr := json.Unmarshal(body, new); unmErr != nil {
+	if unmErr := json.Unmarshal(requestBody, new); unmErr != nil {
 		HandleErr(errors.Wrap(unmErr, ""), w, 400, "Bad request")
 	}
 	newDto := models.NewDTO{ID: new.ID, Name: new.Name, Body: new.Body}
@@ -41,7 +45,16 @@ type FindNewHandler struct {
 }
 
 func (fnh *FindNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	vars, parseErr := url.ParseQuery(r.URL.RawQuery)
+	requestBody, rawQuery, headers, err := GetRequestData(r)
+	if err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be read")
+		return
+	}
+	if err := LogHTTPRequest(*rawQuery, headers, requestBody); err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be logged")
+		return
+	}
+	vars, parseErr := url.ParseQuery(*rawQuery)
 	if parseErr != nil {
 		HandleErr(parseErr, w, 400, "Error")
 	}

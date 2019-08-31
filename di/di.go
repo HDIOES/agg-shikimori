@@ -1,10 +1,8 @@
 package di
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -101,7 +99,7 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 	container.Provide(func(configuration *util.Configuration) *integration.ShikimoriDao {
 		//loging does'nt works with gock library
 		client := &http.Client{
-			Transport: LoggingRoundTripper{Proxied: http.DefaultTransport},
+			Transport: http.DefaultTransport,
 		}
 		shikimoriDao := integration.ShikimoriDao{Client: client, Config: configuration}
 		return &shikimoriDao
@@ -155,26 +153,4 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		return router
 	})
 	return container
-}
-
-//LoggingRoundTripper struct
-type LoggingRoundTripper struct {
-	Proxied http.RoundTripper
-}
-
-//RoundTrip func
-func (lrt LoggingRoundTripper) RoundTrip(req *http.Request) (res *http.Response, e error) {
-	log.Printf("Sending request to %v\n", req.URL)
-	res, e = lrt.Proxied.RoundTrip(req)
-	if e != nil {
-		log.Printf("Error: %v", e)
-	} else {
-		body, readErr := ioutil.ReadAll(res.Body)
-		res.Body = ioutil.NopCloser(bytes.NewReader(body))
-		if readErr != nil {
-			log.Printf("Error: %v", readErr)
-		}
-		log.Printf("Body - %v\n", string(body))
-	}
-	return
 }

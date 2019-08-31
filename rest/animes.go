@@ -19,7 +19,16 @@ type SearchAnimeHandler struct {
 }
 
 func (as *SearchAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	vars, parseErr := url.ParseQuery(r.URL.RawQuery)
+	requestBody, rawQuery, headers, err := GetRequestData(r)
+	if err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be read")
+		return
+	}
+	if err := LogHTTPRequest(*rawQuery, headers, requestBody); err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be logged")
+		return
+	}
+	vars, parseErr := url.ParseQuery(*rawQuery)
 	if parseErr != nil {
 		HandleErr(errors.Wrap(parseErr, ""), w, 400, "Url not valid")
 		return
