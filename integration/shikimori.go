@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/HDIOES/cpa-backend/rest/util"
+	"github.com/HDIOES/su4na-API-main/rest/util"
 	"github.com/pkg/errors"
 )
 

@@ -14,9 +14,9 @@ import (
 
 	"github.com/robfig/cron"
 
-	"github.com/HDIOES/cpa-backend/di"
-	"github.com/HDIOES/cpa-backend/integration"
-	"github.com/HDIOES/cpa-backend/rest/util"
+	"github.com/HDIOES/su4na-API-main/di"
+	"github.com/HDIOES/su4na-API-main/integration"
+	"github.com/HDIOES/su4na-API-main/rest/util"
 )
 
 //CreateDI function to build new DI container
