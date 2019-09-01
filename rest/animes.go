@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HDIOES/cpa-backend/rest/util"
+	"github.com/HDIOES/su4na-API-main/rest/util"
 
-	"github.com/HDIOES/cpa-backend/models"
+	"github.com/HDIOES/su4na-API-main/models"
 	"github.com/pkg/errors"
 )
 
