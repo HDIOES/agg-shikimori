@@ -57,17 +57,27 @@ func (sj *ShikimoriJob) Run() {
 		time.Sleep(1000 * time.Millisecond)
 	}
 	//then we need to run long loading of animes by call url '/api/animes/:id'
-	var animesDtos, err = sj.GetNotProcessedExternalAnimes()
+	//TODO write test for this bug!!!
+	animesDtos, err := sj.GetNotProcessedExternalAnimes()
 	if err != nil {
 		util.HandleError(err)
 		return
 	}
-	for _, animeDto := range animesDtos {
-		processOneAmineErr := sj.ProcessOneAnime(animeDto)
-		if processOneAmineErr != nil {
-			util.HandleError(processOneAmineErr)
+	for len(animesDtos) > 0 {
+		for _, animeDto := range animesDtos {
+			processOneAmineErr := sj.ProcessOneAnime(animeDto)
+			if processOneAmineErr != nil {
+				util.HandleError(processOneAmineErr)
+				return
+			}
+			time.Sleep(1000 * time.Millisecond)
 		}
-		time.Sleep(1000 * time.Millisecond)
+		animeDtosBatch, err := sj.GetNotProcessedExternalAnimes()
+		if err != nil {
+			util.HandleError(err)
+			return
+		}
+		animesDtos = animeDtosBatch
 	}
 }
 
