@@ -37,8 +37,8 @@ func TestSearchAnimes_pagingSuccess(t *testing.T) {
 		animeName2 := "One Punch Man"
 		russianAnimeName2 := "Один Удар Человек"
 		animeURL2 := "/url.jpg"
-		animePostreURL2 := "/url.jpg"
-		animePosterURLRO2 := configuration.ShikimoriURL + animePostreURL2
+		animePosterURL2 := "/url.jpg"
+		animePosterURLRO2 := configuration.ShikimoriURL + animePosterURL2
 		animeURLRO2 := configuration.ShikimoriURL + animeURL2
 		animeRO2 := rest.AnimeRO{
 			ShikiID:     animeExternalID2,
@@ -53,8 +53,8 @@ func TestSearchAnimes_pagingSuccess(t *testing.T) {
 		animeName3 := "One Punch Man"
 		russianAnimeName3 := "Один Удар Человек"
 		animeURL3 := "/url.jpg"
-		animePostreURL3 := "/url.jpg"
-		animePosterURLRO3 := configuration.ShikimoriURL + animePostreURL3
+		animePosterURL3 := "/url.jpg"
+		animePosterURLRO3 := configuration.ShikimoriURL + animePosterURL3
 		animeURLRO3 := configuration.ShikimoriURL + animeURL3
 		animeRO3 := rest.AnimeRO{
 			ShikiID:     animeExternalID3,
@@ -95,8 +95,8 @@ func TestSearchAnimes_byStatusSuccess(t *testing.T) {
 		animeName8 := "One Punch Man"
 		russianAnimeName8 := "Один Удар Человек"
 		animeURL8 := "/url.jpg"
-		animePostreURL8 := "/url.jpg"
-		animePosterURLRO8 := configuration.ShikimoriURL + animePostreURL8
+		animePosterURL8 := "/url.jpg"
+		animePosterURLRO8 := configuration.ShikimoriURL + animePosterURL8
 		animeURLRO8 := configuration.ShikimoriURL + animeURL8
 		animeRO8 := rest.AnimeRO{
 			ShikiID:     animeExternalID8,
@@ -137,8 +137,8 @@ func TestSearchAnimes_byKindSuccess(t *testing.T) {
 		animeName1 := "One Punch Man"
 		russianAnimeName1 := "Один Удар Человек"
 		animeURL1 := "/url.jpg"
-		animePostreURL1 := "/url.jpg"
-		animePosterURLRO1 := configuration.ShikimoriURL + animePostreURL1
+		animePosterURL1 := "/url.jpg"
+		animePosterURLRO1 := configuration.ShikimoriURL + animePosterURL1
 		animeURLRO1 := configuration.ShikimoriURL + animeURL1
 		animeRO1 := rest.AnimeRO{
 			ShikiID:     animeExternalID1,
@@ -153,8 +153,8 @@ func TestSearchAnimes_byKindSuccess(t *testing.T) {
 		animeName10 := "One Punch Man"
 		russianAnimeName10 := "Один Удар Человек"
 		animeURL10 := "/url.jpg"
-		animePostreURL10 := "/url.jpg"
-		animePosterURLRO10 := configuration.ShikimoriURL + animePostreURL10
+		animePosterURL10 := "/url.jpg"
+		animePosterURLRO10 := configuration.ShikimoriURL + animePosterURL10
 		animeURLRO10 := configuration.ShikimoriURL + animeURL10
 		animeRO10 := rest.AnimeRO{
 			ShikiID:     animeExternalID10,
@@ -169,8 +169,8 @@ func TestSearchAnimes_byKindSuccess(t *testing.T) {
 		animeName5 := "One Punch Man"
 		russianAnimeName5 := "Один Удар Человек"
 		animeURL5 := "/url.jpg"
-		animePostreURL5 := "/url.jpg"
-		animePosterURLRO5 := configuration.ShikimoriURL + animePostreURL5
+		animePosterURL5 := "/url.jpg"
+		animePosterURLRO5 := configuration.ShikimoriURL + animePosterURL5
 		animeURLRO5 := configuration.ShikimoriURL + animeURL5
 		animeRO5 := rest.AnimeRO{
 			ShikiID:     animeExternalID5,
@@ -211,8 +211,8 @@ func TestSearchAnimes_byOrderSuccess(t *testing.T) {
 		animeName1 := "One Punch Man"
 		russianAnimeName1 := "Один Удар Человек"
 		animeURL1 := "/url.jpg"
-		animePostreURL1 := "/url.jpg"
-		animePosterURLRO1 := configuration.ShikimoriURL + animePostreURL1
+		animePosterURL1 := "/url.jpg"
+		animePosterURLRO1 := configuration.ShikimoriURL + animePosterURL1
 		animeURLRO1 := configuration.ShikimoriURL + animeURL1
 		animeRO1 := rest.AnimeRO{
 			ShikiID:     animeExternalID1,
@@ -227,8 +227,8 @@ func TestSearchAnimes_byOrderSuccess(t *testing.T) {
 		animeName10 := "One Punch Man"
 		russianAnimeName10 := "Один Удар Человек"
 		animeURL10 := "/url.jpg"
-		animePostreURL10 := "/url.jpg"
-		animePosterURLRO10 := configuration.ShikimoriURL + animePostreURL10
+		animePosterURL10 := "/url.jpg"
+		animePosterURLRO10 := configuration.ShikimoriURL + animePosterURL10
 		animeURLRO10 := configuration.ShikimoriURL + animeURL10
 		animeRO10 := rest.AnimeRO{
 			ShikiID:     animeExternalID10,
@@ -243,8 +243,8 @@ func TestSearchAnimes_byOrderSuccess(t *testing.T) {
 		animeName5 := "One Punch Man"
 		russianAnimeName5 := "Один Удар Человек"
 		animeURL5 := "/url.jpg"
-		animePostreURL5 := "/url.jpg"
-		animePosterURLRO5 := configuration.ShikimoriURL + animePostreURL5
+		animePosterURL5 := "/url.jpg"
+		animePosterURLRO5 := configuration.ShikimoriURL + animePosterURL5
 		animeURLRO5 := configuration.ShikimoriURL + animeURL5
 		animeRO5 := rest.AnimeRO{
 			ShikiID:     animeExternalID5,
@@ -286,8 +286,8 @@ func TestSearchAnimes_byScoreSuccess(t *testing.T) {
 		animeName10 := "One Punch Man"
 		russianAnimeName10 := "Один Удар Человек"
 		animeURL10 := "/url.jpg"
-		animePostreURL10 := "/url.jpg"
-		animePosterURLRO10 := configuration.ShikimoriURL + animePostreURL10
+		animePosterURL10 := "/url.jpg"
+		animePosterURLRO10 := configuration.ShikimoriURL + animePosterURL10
 		animeURLRO10 := configuration.ShikimoriURL + animeURL10
 		animeRO10 := rest.AnimeRO{
 			ShikiID:     animeExternalID10,
@@ -302,8 +302,8 @@ func TestSearchAnimes_byScoreSuccess(t *testing.T) {
 		animeName7 := "One Punch Man"
 		russianAnimeName7 := "Один Удар Человек"
 		animeURL7 := "/url.jpg"
-		animePostreURL7 := "/url.jpg"
-		animePosterURLRO7 := configuration.ShikimoriURL + animePostreURL7
+		animePosterURL7 := "/url.jpg"
+		animePosterURLRO7 := configuration.ShikimoriURL + animePosterURL7
 		animeURLRO7 := configuration.ShikimoriURL + animeURL7
 		animeRO7 := rest.AnimeRO{
 			ShikiID:     animeExternalID7,
@@ -345,8 +345,8 @@ func TestSearchAnimes_byGenresIdsSuccess(t *testing.T) {
 		animeName2 := "One Punch Man"
 		russianAnimeName2 := "Один Удар Человек"
 		animeURL2 := "/url.jpg"
-		animePostreURL2 := "/url.jpg"
-		animePosterURLRO2 := configuration.ShikimoriURL + animePostreURL2
+		animePosterURL2 := "/url.jpg"
+		animePosterURLRO2 := configuration.ShikimoriURL + animePosterURL2
 		animeURLRO2 := configuration.ShikimoriURL + animeURL2
 		animeRO2 := rest.AnimeRO{
 			ShikiID:     animeExternalID2,
@@ -361,8 +361,8 @@ func TestSearchAnimes_byGenresIdsSuccess(t *testing.T) {
 		animeName4 := "One Punch Man"
 		russianAnimeName4 := "Один Удар Человек"
 		animeURL4 := "/url.jpg"
-		animePostreURL4 := "/url.jpg"
-		animePosterURLRO4 := configuration.ShikimoriURL + animePostreURL4
+		animePosterURL4 := "/url.jpg"
+		animePosterURLRO4 := configuration.ShikimoriURL + animePosterURL4
 		animeURLRO4 := configuration.ShikimoriURL + animeURL4
 		animeRO4 := rest.AnimeRO{
 			ShikiID:     animeExternalID4,
@@ -377,8 +377,8 @@ func TestSearchAnimes_byGenresIdsSuccess(t *testing.T) {
 		animeName6 := "One Punch Man"
 		russianAnimeName6 := "Один Удар Человек"
 		animeURL6 := "/url.jpg"
-		animePostreURL6 := "/url.jpg"
-		animePosterURLRO6 := configuration.ShikimoriURL + animePostreURL6
+		animePosterURL6 := "/url.jpg"
+		animePosterURLRO6 := configuration.ShikimoriURL + animePosterURL6
 		animeURLRO6 := configuration.ShikimoriURL + animeURL6
 		animeRO6 := rest.AnimeRO{
 			ShikiID:     animeExternalID6,
@@ -388,6 +388,22 @@ func TestSearchAnimes_byGenresIdsSuccess(t *testing.T) {
 			PosterURL:   &animePosterURLRO6,
 		}
 		expectedAnimesRos = append(expectedAnimesRos, animeRO6)
+
+		animeExternalID9 := "9"
+		animeName9 := "One Punch Man"
+		russianAnimeName9 := "Один Удар Человек"
+		animeURL9 := "/url.jpg"
+		animePosterURL9 := "/url.jpg"
+		animePosterURLRO9 := configuration.ShikimoriURL + animePosterURL9
+		animeURLRO9 := configuration.ShikimoriURL + animeURL9
+		animeRO9 := rest.AnimeRO{
+			ShikiID:     animeExternalID9,
+			Name:        &animeName9,
+			RussuanName: &russianAnimeName9,
+			URL:         &animeURLRO9,
+			PosterURL:   &animePosterURLRO9,
+		}
+		expectedAnimesRos = append(expectedAnimesRos, animeRO9)
 
 		//get actual data
 		actualJSONResponseBody := recorder.Body.String()
@@ -420,8 +436,8 @@ func TestSearchAnimes_byStudioIdsSuccess(t *testing.T) {
 		animeName5 := "One Punch Man"
 		russianAnimeName5 := "Один Удар Человек"
 		animeURL5 := "/url.jpg"
-		animePostreURL5 := "/url.jpg"
-		animePosterURLRO5 := configuration.ShikimoriURL + animePostreURL5
+		animePosterURL5 := "/url.jpg"
+		animePosterURLRO5 := configuration.ShikimoriURL + animePosterURL5
 		animeURLRO5 := configuration.ShikimoriURL + animeURL5
 		animeRO5 := rest.AnimeRO{
 			ShikiID:     animeExternalID5,
@@ -436,8 +452,8 @@ func TestSearchAnimes_byStudioIdsSuccess(t *testing.T) {
 		animeName8 := "One Punch Man"
 		russianAnimeName8 := "Один Удар Человек"
 		animeURL8 := "/url.jpg"
-		animePostreURL8 := "/url.jpg"
-		animePosterURLRO8 := configuration.ShikimoriURL + animePostreURL8
+		animePosterURL8 := "/url.jpg"
+		animePosterURLRO8 := configuration.ShikimoriURL + animePosterURL8
 		animeURLRO8 := configuration.ShikimoriURL + animeURL8
 		animeRO8 := rest.AnimeRO{
 			ShikiID:     animeExternalID8,
@@ -479,8 +495,8 @@ func TestSearchAnimes_byDurationSuccess(t *testing.T) {
 		animeName3 := "One Punch Man"
 		russianAnimeName3 := "Один Удар Человек"
 		animeURL3 := "/url.jpg"
-		animePostreURL3 := "/url.jpg"
-		animePosterURLRO3 := configuration.ShikimoriURL + animePostreURL3
+		animePosterURL3 := "/url.jpg"
+		animePosterURLRO3 := configuration.ShikimoriURL + animePosterURL3
 		animeURLRO3 := configuration.ShikimoriURL + animeURL3
 		animeRO3 := rest.AnimeRO{
 			ShikiID:     animeExternalID3,
@@ -495,8 +511,8 @@ func TestSearchAnimes_byDurationSuccess(t *testing.T) {
 		animeName4 := "One Punch Man"
 		russianAnimeName4 := "Один Удар Человек"
 		animeURL4 := "/url.jpg"
-		animePostreURL4 := "/url.jpg"
-		animePosterURLRO4 := configuration.ShikimoriURL + animePostreURL4
+		animePosterURL4 := "/url.jpg"
+		animePosterURLRO4 := configuration.ShikimoriURL + animePosterURL4
 		animeURLRO4 := configuration.ShikimoriURL + animeURL4
 		animeRO4 := rest.AnimeRO{
 			ShikiID:     animeExternalID4,
@@ -511,8 +527,8 @@ func TestSearchAnimes_byDurationSuccess(t *testing.T) {
 		animeName7 := "One Punch Man"
 		russianAnimeName7 := "Один Удар Человек"
 		animeURL7 := "/url.jpg"
-		animePostreURL7 := "/url.jpg"
-		animePosterURLRO7 := configuration.ShikimoriURL + animePostreURL7
+		animePosterURL7 := "/url.jpg"
+		animePosterURLRO7 := configuration.ShikimoriURL + animePosterURL7
 		animeURLRO7 := configuration.ShikimoriURL + animeURL7
 		animeRO7 := rest.AnimeRO{
 			ShikiID:     animeExternalID7,
@@ -527,8 +543,8 @@ func TestSearchAnimes_byDurationSuccess(t *testing.T) {
 		animeName8 := "One Punch Man"
 		russianAnimeName8 := "Один Удар Человек"
 		animeURL8 := "/url.jpg"
-		animePostreURL8 := "/url.jpg"
-		animePosterURLRO8 := configuration.ShikimoriURL + animePostreURL8
+		animePosterURL8 := "/url.jpg"
+		animePosterURLRO8 := configuration.ShikimoriURL + animePosterURL8
 		animeURLRO8 := configuration.ShikimoriURL + animeURL8
 		animeRO8 := rest.AnimeRO{
 			ShikiID:     animeExternalID8,
@@ -568,8 +584,8 @@ func TestSearchAnimes_byRatingSuccess(t *testing.T) {
 		animeName3 := "One Punch Man"
 		russianAnimeName3 := "Один Удар Человек"
 		animeURL3 := "/url.jpg"
-		animePostreURL3 := "/url.jpg"
-		animePosterURLRO3 := configuration.ShikimoriURL + animePostreURL3
+		animePosterURL3 := "/url.jpg"
+		animePosterURLRO3 := configuration.ShikimoriURL + animePosterURL3
 		animeURLRO3 := configuration.ShikimoriURL + animeURL3
 		animeRO3 := rest.AnimeRO{
 			ShikiID:     animeExternalID3,
@@ -584,8 +600,8 @@ func TestSearchAnimes_byRatingSuccess(t *testing.T) {
 		animeName7 := "One Punch Man"
 		russianAnimeName7 := "Один Удар Человек"
 		animeURL7 := "/url.jpg"
-		animePostreURL7 := "/url.jpg"
-		animePosterURLRO7 := configuration.ShikimoriURL + animePostreURL7
+		animePosterURL7 := "/url.jpg"
+		animePosterURLRO7 := configuration.ShikimoriURL + animePosterURL7
 		animeURLRO7 := configuration.ShikimoriURL + animeURL7
 		animeRO7 := rest.AnimeRO{
 			ShikiID:     animeExternalID7,
@@ -625,8 +641,8 @@ func TestSearchAnimes_byFranchiseSuccess(t *testing.T) {
 		animeName10 := "One Punch Man"
 		russianAnimeName10 := "Один Удар Человек"
 		animeURL10 := "/url.jpg"
-		animePostreURL10 := "/url.jpg"
-		animePosterURLRO10 := configuration.ShikimoriURL + animePostreURL10
+		animePosterURL10 := "/url.jpg"
+		animePosterURLRO10 := configuration.ShikimoriURL + animePosterURL10
 		animeURLRO10 := configuration.ShikimoriURL + animeURL10
 		animeRO10 := rest.AnimeRO{
 			ShikiID:     animeExternalID10,
@@ -641,8 +657,8 @@ func TestSearchAnimes_byFranchiseSuccess(t *testing.T) {
 		animeName2 := "One Punch Man"
 		russianAnimeName2 := "Один Удар Человек"
 		animeURL2 := "/url.jpg"
-		animePostreURL2 := "/url.jpg"
-		animePosterURLRO2 := configuration.ShikimoriURL + animePostreURL2
+		animePosterURL2 := "/url.jpg"
+		animePosterURLRO2 := configuration.ShikimoriURL + animePosterURL2
 		animeURLRO2 := configuration.ShikimoriURL + animeURL2
 		animeRO7 := rest.AnimeRO{
 			ShikiID:     animeExternalID2,
@@ -683,8 +699,8 @@ func TestSearchAnimes_byIdsSuccess(t *testing.T) {
 		animeName10 := "One Punch Man"
 		russianAnimeName10 := "Один Удар Человек"
 		animeURL10 := "/url.jpg"
-		animePostreURL10 := "/url.jpg"
-		animePosterURLRO10 := configuration.ShikimoriURL + animePostreURL10
+		animePosterURL10 := "/url.jpg"
+		animePosterURLRO10 := configuration.ShikimoriURL + animePosterURL10
 		animeURLRO10 := configuration.ShikimoriURL + animeURL10
 		animeRO10 := rest.AnimeRO{
 			ShikiID:     animeExternalID10,
@@ -699,8 +715,8 @@ func TestSearchAnimes_byIdsSuccess(t *testing.T) {
 		animeName2 := "One Punch Man"
 		russianAnimeName2 := "Один Удар Человек"
 		animeURL2 := "/url.jpg"
-		animePostreURL2 := "/url.jpg"
-		animePosterURLRO2 := configuration.ShikimoriURL + animePostreURL2
+		animePosterURL2 := "/url.jpg"
+		animePosterURLRO2 := configuration.ShikimoriURL + animePosterURL2
 		animeURLRO2 := configuration.ShikimoriURL + animeURL2
 		animeRO2 := rest.AnimeRO{
 			ShikiID:     animeExternalID2,
@@ -741,8 +757,8 @@ func TestSearchAnimes_byExludeIdsSuccess(t *testing.T) {
 		animeName6 := "One Punch Man"
 		russianAnimeName6 := "Один Удар Человек"
 		animeURL6 := "/url.jpg"
-		animePostreURL6 := "/url.jpg"
-		animePosterURLRO6 := configuration.ShikimoriURL + animePostreURL6
+		animePosterURL6 := "/url.jpg"
+		animePosterURLRO6 := configuration.ShikimoriURL + animePosterURL6
 		animeURLRO6 := configuration.ShikimoriURL + animeURL6
 		animeRO6 := rest.AnimeRO{
 			ShikiID:     animeExternalID6,
@@ -757,8 +773,8 @@ func TestSearchAnimes_byExludeIdsSuccess(t *testing.T) {
 		animeName7 := "One Punch Man"
 		russianAnimeName7 := "Один Удар Человек"
 		animeURL7 := "/url.jpg"
-		animePostreURL7 := "/url.jpg"
-		animePosterURLRO7 := configuration.ShikimoriURL + animePostreURL7
+		animePosterURL7 := "/url.jpg"
+		animePosterURLRO7 := configuration.ShikimoriURL + animePosterURL7
 		animeURLRO7 := configuration.ShikimoriURL + animeURL7
 		animeRO7 := rest.AnimeRO{
 			ShikiID:     animeExternalID7,
@@ -843,8 +859,8 @@ func TestSearchAnimes_ByGenresIds_threeGenresOfOneAnimeSuccess(t *testing.T) {
 		animeName9 := "One Punch Man"
 		russianAnimeName9 := "Один Удар Человек"
 		animeURL9 := "/url.jpg"
-		animePostreURL9 := "/url.jpg"
-		animePosterURLRO9 := configuration.ShikimoriURL + animePostreURL9
+		animePosterURL9 := "/url.jpg"
+		animePosterURLRO9 := configuration.ShikimoriURL + animePosterURL9
 		animeURLRO9 := configuration.ShikimoriURL + animeURL9
 		animeRO9 := rest.AnimeRO{
 			ShikiID:     animeExternalID9,

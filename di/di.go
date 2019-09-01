@@ -1,8 +1,10 @@
 package di
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,6 +15,7 @@ import (
 	"github.com/HDIOES/cpa-backend/rest"
 	"github.com/HDIOES/cpa-backend/rest/util"
 	"github.com/gorilla/mux"
+	loghttp "github.com/motemen/go-loghttp"
 	"github.com/ory/dockertest"
 	"github.com/pkg/errors"
 	migrate "github.com/rubenv/sql-migrate"
@@ -97,7 +100,50 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		return &models.AnimeDAO{Db: db}, &models.GenreDAO{Db: db}, &models.StudioDAO{Db: db}, &models.NewDAO{Db: db}
 	})
 	container.Provide(func(configuration *util.Configuration) *integration.ShikimoriDao {
-		client := &http.Client{}
+		transport := &loghttp.Transport{
+			LogRequest: func(req *http.Request) {
+				var loggedHTTPBody []byte
+				reqBodyReadCloser := req.Body
+				if reqBodyReadCloser != nil {
+					defer reqBodyReadCloser.Close()
+					httpBody, err := ioutil.ReadAll(req.Body)
+					if err != nil {
+						log.Println("Cannot read request body")
+					} else {
+						loggedHTTPBody = httpBody
+					}
+				}
+				loggedHTTPBodyValue := ""
+				if loggedHTTPBody != nil {
+					loggedHTTPBodyValue = string(loggedHTTPBody)
+					req.Body = ioutil.NopCloser(bytes.NewReader(loggedHTTPBody))
+				}
+				log.Printf("Http request: URL: %v Method: %v Headers: %v Body: %v", req.URL.String(), req.Method, req.Header, loggedHTTPBodyValue)
+
+			},
+			LogResponse: func(resp *http.Response) {
+				var loggedHTTPBody []byte
+				respBodyReadCloser := resp.Body
+				if respBodyReadCloser != nil {
+					defer respBodyReadCloser.Close()
+					httpBody, err := ioutil.ReadAll(respBodyReadCloser)
+					if err != nil {
+						log.Println("Cannot read response body")
+					} else {
+						loggedHTTPBody = httpBody
+					}
+				}
+				loggedHTTPBodyValue := ""
+				if loggedHTTPBody != nil {
+					loggedHTTPBodyValue = string(loggedHTTPBody)
+					resp.Body = ioutil.NopCloser(bytes.NewReader(loggedHTTPBody))
+				}
+				log.Printf("Http response: Status: %v Headers: %v Body: %v", resp.StatusCode, resp.Header, loggedHTTPBodyValue)
+			},
+		}
+		client := &http.Client{
+			Transport: transport,
+		}
 		shikimoriDao := integration.ShikimoriDao{Client: client, Config: configuration}
 		return &shikimoriDao
 	})
@@ -150,21 +196,4 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		return router
 	})
 	return container
-}
-
-//LoggingRoundTripper struct
-type LoggingRoundTripper struct {
-	Proxied http.RoundTripper
-}
-
-//RoundTrip func
-func (lrt LoggingRoundTripper) RoundTrip(req *http.Request) (res *http.Response, e error) {
-	log.Printf("Sending request to %v\n", req.URL)
-	res, e = lrt.Proxied.RoundTrip(req)
-	if e != nil {
-		log.Printf("Error: %v", e)
-	} else {
-		log.Printf("Received %v response\n", res.Status)
-	}
-	return
 }

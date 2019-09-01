@@ -15,7 +15,16 @@ type GenreHandler struct {
 }
 
 func (g *GenreHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	vars, parseErr := url.ParseQuery(r.URL.RawQuery)
+	requestBody, rawQuery, headers, err := GetRequestData(r)
+	if err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be read")
+		return
+	}
+	if err := LogHTTPRequest(r.URL.String(), r.Method, headers, requestBody); err != nil {
+		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be logged")
+		return
+	}
+	vars, parseErr := url.ParseQuery(*rawQuery)
 	if parseErr != nil {
 		HandleErr(errors.Wrap(parseErr, ""), w, 400, "Url not valid")
 	}
