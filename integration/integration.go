@@ -86,7 +86,7 @@ func (sj *ShikimoriJob) GetNotProcessedExternalAnimes() ([]models.AnimeDTO, erro
 func (sj *ShikimoriJob) ProcessOneAnime(animeDto models.AnimeDTO) error {
 	anime, err := sj.ShikimoriDao.OneAnime(animeDto.ExternalID)
 	if err != nil {
-		errors.Wrap(err, "")
+		return errors.Wrap(err, "")
 	}
 	animeDto.Rating = anime.Rating
 	if anime.Score != nil {
