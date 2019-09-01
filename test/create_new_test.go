@@ -9,8 +9,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 
-	"github.com/HDIOES/cpa-backend/models"
-	"github.com/HDIOES/cpa-backend/rest"
+	"github.com/HDIOES/su4na-API-main/models"
+	"github.com/HDIOES/su4na-API-main/rest"
 	"github.com/stretchr/testify/assert"
 
 	_ "github.com/lib/pq"

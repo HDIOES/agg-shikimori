@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 
-	"github.com/HDIOES/cpa-backend/models"
+	"github.com/HDIOES/su4na-API-main/models"
 	"github.com/stretchr/testify/assert"
 )
 
