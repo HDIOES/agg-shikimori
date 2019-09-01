@@ -1,0 +1,4 @@
+development:
+    dialect: postgres
+    datasource: postgres://forna_user:12345@forna_postgresdb:5432/forna?sslmode=disable
+    dir: migrations
