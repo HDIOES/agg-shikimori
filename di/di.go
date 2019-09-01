@@ -103,7 +103,9 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		transport := &loghttp.Transport{
 			LogRequest: func(req *http.Request) {
 				var loggedHTTPBody []byte
-				if req.Body != nil {
+				reqBodyReadCloser := req.Body
+				if reqBodyReadCloser != nil {
+					defer reqBodyReadCloser.Close()
 					httpBody, err := ioutil.ReadAll(req.Body)
 					if err != nil {
 						log.Println("Cannot read request body")

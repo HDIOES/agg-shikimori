@@ -45,6 +45,7 @@ func GetRequestData(r *http.Request) (requestBody []byte, rawQuery *string, head
 	if r.Body == nil {
 		return nil, &r.URL.RawQuery, r.Header, nil
 	}
+	defer r.Body.Close()
 	if requestBodyAsBytes, requestBodyErr := ioutil.ReadAll(r.Body); requestBodyErr != nil {
 		return nil, nil, nil, errors.WithStack(requestBodyErr)
 	} else {
