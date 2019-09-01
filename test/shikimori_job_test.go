@@ -70,8 +70,6 @@ func TestShikimoriJobSuccess(t *testing.T) {
 			Reply(200).
 			JSON(oneAnimeData)
 
-		gock.InterceptClient(shikimoriDao.Client)
-
 		job.Run()
 
 		//asserts

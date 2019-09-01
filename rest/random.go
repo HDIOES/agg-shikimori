@@ -24,7 +24,7 @@ func (rah *RandomAnimeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be read")
 		return
 	}
-	if err := LogHTTPRequest(r.URL.String(), headers, requestBody); err != nil {
+	if err := LogHTTPRequest(r.URL.String(), r.Method, headers, requestBody); err != nil {
 		HandleErr(errors.Wrap(err, ""), w, 400, "Request cannot be logged")
 		return
 	}

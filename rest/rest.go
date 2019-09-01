@@ -52,12 +52,12 @@ func GetRequestData(r *http.Request) (requestBody []byte, rawQuery *string, head
 	}
 }
 
-func LogHTTPRequest(url string, headers http.Header, body interface{}) error {
-	const logLineTemplate = "Http request: %v Headers: %v Body: %v"
+func LogHTTPRequest(url, method string, headers http.Header, body interface{}) error {
+	const logLineTemplate = "Http request: URL: %v Method: %v Headers: %v Body: %v"
 	if bodyAsBytes, ok := body.([]byte); ok {
-		log.Printf(logLineTemplate, url, headers, bodyAsBytes)
+		log.Printf(logLineTemplate, url, method, headers, bodyAsBytes)
 	} else if bodyAsString, ok := body.(string); ok {
-		log.Printf(logLineTemplate, url, headers, bodyAsString)
+		log.Printf(logLineTemplate, url, method, headers, bodyAsString)
 	} else {
 		bodyAsBytes, err := json.Marshal(body)
 		if err != nil {
