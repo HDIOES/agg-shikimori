@@ -546,14 +546,14 @@ type AnimeQueryBuilder struct {
 	Ids        []string
 	ExcludeIds []string
 	SQLQuery   strings.Builder
-	Processed  bool
+	Processed  *bool
 	CountOnly  bool
 	RowNumber  int64
 }
 
 //SetProcessed function
 func (aqb *AnimeQueryBuilder) SetProcessed(processed bool) {
-	aqb.Processed = processed
+	aqb.Processed = &processed
 }
 
 //AddExcludeID function
@@ -840,7 +840,7 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
 		args = append(args, aqb.Score)
 	}
-	if aqb.Processed == true {
+	if aqb.Processed != nil {
 		countOfParameter++
 		aqb.SQLQuery.WriteString(" AND animes.processed = $")
 		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
