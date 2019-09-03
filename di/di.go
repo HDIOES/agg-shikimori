@@ -176,7 +176,8 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		findNewHandler *rest.FindNewHandler,
 		randomAnimeHandler *rest.RandomAnimeHandler,
 		studioHandler *rest.StudioHandler,
-		searchAnimeHandler *rest.SearchAnimeHandler) *mux.Router {
+		searchAnimeHandler *rest.SearchAnimeHandler,
+		shikimoriJob *integration.ShikimoriJob) *mux.Router {
 		router := mux.NewRouter()
 		router.Handle("/api/animes/random", randomAnimeHandler).
 			Methods("GET")
@@ -192,6 +193,9 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 			Methods("GET")
 		router.Handle("/api/news", nil).
 			Methods("DELETE")
+		router.HandleFunc("/api/job", func(w http.ResponseWriter, r *http.Request) {
+			shikimoriJob.Run()
+		}).Methods("GET")
 		http.Handle("/", router)
 		return router
 	})
