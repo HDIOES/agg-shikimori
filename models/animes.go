@@ -318,6 +318,34 @@ func (dao *AnimeDAO) LinkAnimeAndGenre(animeID int64, genreID int64) error {
 	return nil
 }
 
+//CheckGenre function
+func (dao *AnimeDAO) CheckGenre(animeID int64, genreID int64) (*bool, error) {
+	stmt, prepareStmtErr := dao.Db.Prepare("SELECT count(*) FROM anime_genre WHERE anime_id = $1 AND genre_id = $2")
+	if prepareStmtErr != nil {
+		return nil, errors.Wrap(prepareStmtErr, "")
+	}
+	defer stmt.Close()
+	result, stmtErr := stmt.Query(animeID, genreID)
+	if stmtErr != nil {
+		return nil, errors.Wrap(stmtErr, "")
+	}
+	defer result.Close()
+	if result.Next() {
+		var count sql.NullInt64
+		result.Scan(&count)
+		if count.Valid {
+			value := false
+			if count.Int64 > 0 {
+				value = true
+				return &value, nil
+			}
+			return &value, nil
+		}
+		return nil, errors.New("Error of checking genre from anime")
+	}
+	return nil, errors.New("Error of checking genre from anime")
+}
+
 //LinkAnimeAndStudio function
 func (dao *AnimeDAO) LinkAnimeAndStudio(animeID int64, studioID int64) error {
 	tx, beginErr := dao.Db.Begin()
@@ -337,6 +365,34 @@ func (dao *AnimeDAO) LinkAnimeAndStudio(animeID int64, studioID int64) error {
 		return rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return nil
+}
+
+//CheckStudio function
+func (dao *AnimeDAO) CheckStudio(animeID int64, studioID int64) (*bool, error) {
+	stmt, prepareStmtErr := dao.Db.Prepare("SELECT count(*) FROM anime_studio WHERE anime_id = $1 AND studio_id = $2")
+	if prepareStmtErr != nil {
+		return nil, errors.Wrap(prepareStmtErr, "")
+	}
+	defer stmt.Close()
+	result, stmtErr := stmt.Query(animeID, studioID)
+	if stmtErr != nil {
+		return nil, errors.Wrap(stmtErr, "")
+	}
+	defer result.Close()
+	if result.Next() {
+		var count sql.NullInt64
+		result.Scan(&count)
+		if count.Valid {
+			value := false
+			if count.Int64 > 0 {
+				value = true
+				return &value, nil
+			}
+			return &value, nil
+		}
+		return nil, errors.New("Error of checking studio from anime")
+	}
+	return nil, errors.New("Error of checking studio from anime")
 }
 
 //Update function
