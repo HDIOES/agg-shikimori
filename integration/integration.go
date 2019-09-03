@@ -28,10 +28,12 @@ type ShikimoriJob struct {
 	StudioDao    *models.StudioDAO
 	Config       *util.Configuration
 	ShikimoriDao *ShikimoriDao
+	Runned       bool
 }
 
 //Run function
 func (sj *ShikimoriJob) Run() {
+	sj.Runned = true
 	defer log.Println("Job has been ended")
 	//at start we need to load studios and genres
 	if processStudioErr := sj.ProcessStudios(); processStudioErr != nil {
@@ -79,6 +81,7 @@ func (sj *ShikimoriJob) Run() {
 		}
 		animesDtos = animeDtosBatch
 	}
+	sj.Runned = false
 }
 
 //GetNotProcessedExternalAnimes function
