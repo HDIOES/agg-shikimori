@@ -194,7 +194,9 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		router.Handle("/api/news", nil).
 			Methods("DELETE")
 		router.HandleFunc("/api/job", func(w http.ResponseWriter, r *http.Request) {
-			shikimoriJob.Run()
+			if !shikimoriJob.Runned {
+				go shikimoriJob.Run()
+			}
 		}).Methods("GET")
 		http.Handle("/", router)
 		return router
