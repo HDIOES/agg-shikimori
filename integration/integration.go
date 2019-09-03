@@ -125,8 +125,14 @@ func (sj *ShikimoriJob) ProcessOneAnime(animeDto models.AnimeDTO) error {
 		if genreDtoErr != nil {
 			return errors.Wrap(genreDtoErr, "")
 		}
-		if linkErr := sj.AnimeDao.LinkAnimeAndGenre(animeDto.ID, genreDto.ID); linkErr != nil {
-			return errors.Wrap(linkErr, "")
+		hasGenre, err := sj.AnimeDao.CheckGenre(animeDto.ID, genreDto.ID)
+		if err != nil {
+			return err
+		}
+		if !*hasGenre {
+			if linkErr := sj.AnimeDao.LinkAnimeAndGenre(animeDto.ID, genreDto.ID); linkErr != nil {
+				return errors.Wrap(linkErr, "")
+			}
 		}
 	}
 	//let go to set studio for anime
@@ -135,8 +141,14 @@ func (sj *ShikimoriJob) ProcessOneAnime(animeDto models.AnimeDTO) error {
 		if studioDtoErr != nil {
 			return errors.Wrap(studioDtoErr, "")
 		}
-		if linkErr := sj.AnimeDao.LinkAnimeAndStudio(animeDto.ID, studioDto.ID); linkErr != nil {
-			return errors.Wrap(linkErr, "")
+		hasStudio, err := sj.AnimeDao.CheckStudio(animeDto.ID, studioDto.ID)
+		if err != nil {
+			return err
+		}
+		if !*hasStudio {
+			if linkErr := sj.AnimeDao.LinkAnimeAndStudio(animeDto.ID, studioDto.ID); linkErr != nil {
+				return errors.Wrap(linkErr, "")
+			}
 		}
 	}
 	log.Println("Anime has been processed")
