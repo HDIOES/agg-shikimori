@@ -41,18 +41,20 @@ func ReturnResponseAsJSON(w http.ResponseWriter, body interface{}, httpStatus in
 	return nil
 }
 
+//GetRequestData function
 func GetRequestData(r *http.Request) (requestBody []byte, rawQuery *string, headers http.Header, reqErr error) {
 	if r.Body == nil {
 		return nil, &r.URL.RawQuery, r.Header, nil
 	}
 	defer r.Body.Close()
-	if requestBodyAsBytes, requestBodyErr := ioutil.ReadAll(r.Body); requestBodyErr != nil {
+	requestBodyAsBytes, requestBodyErr := ioutil.ReadAll(r.Body)
+	if requestBodyErr != nil {
 		return nil, nil, nil, errors.WithStack(requestBodyErr)
-	} else {
-		return requestBodyAsBytes, &r.URL.RawQuery, r.Header, nil
 	}
+	return requestBodyAsBytes, &r.URL.RawQuery, r.Header, nil
 }
 
+//LogHTTPRequest function
 func LogHTTPRequest(url, method string, headers http.Header, body interface{}) error {
 	const logLineTemplate = "Http request: URL: %v Method: %v Headers: %v Body: %v"
 	if bodyAsBytes, ok := body.([]byte); ok {
@@ -64,11 +66,12 @@ func LogHTTPRequest(url, method string, headers http.Header, body interface{}) e
 		if err != nil {
 			return errors.Wrap(err, "")
 		}
-		log.Printf(logLineTemplate, url, headers, string(bodyAsBytes))
+		log.Printf(logLineTemplate, url, method, headers, string(bodyAsBytes))
 	}
 	return nil
 }
 
+//LogHTTPResponse function
 func LogHTTPResponse(httpStatus int, headers map[string]string, body interface{}) error {
 	const logLineTemplate = "Http response: Status: %v Headers: %v Body: %v"
 	if bodyAsBytes, ok := body.([]byte); ok {
