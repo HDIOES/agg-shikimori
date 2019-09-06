@@ -9,11 +9,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/HDIOES/su4na-API-main/models"
+	"github.com/HDIOES/agg-shikimori/models"
 	"github.com/pkg/errors"
 
-	"github.com/HDIOES/su4na-API-main/integration"
-	"github.com/HDIOES/su4na-API-main/rest/util"
+	"github.com/HDIOES/agg-shikimori/integration"
+	"github.com/HDIOES/agg-shikimori/rest/util"
 	_ "github.com/lib/pq"
 
 	gock "gopkg.in/h2non/gock.v1"

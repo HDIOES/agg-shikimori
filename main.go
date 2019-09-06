@@ -14,9 +14,9 @@ import (
 
 	"github.com/robfig/cron"
 
-	"github.com/HDIOES/su4na-API-main/di"
-	"github.com/HDIOES/su4na-API-main/integration"
-	"github.com/HDIOES/su4na-API-main/rest/util"
+	"github.com/HDIOES/agg-shikimori/di"
+	"github.com/HDIOES/agg-shikimori/integration"
+	"github.com/HDIOES/agg-shikimori/rest/util"
 )
 
 //CreateDI function to build new DI container

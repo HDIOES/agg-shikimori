@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HDIOES/su4na-API-main/models"
-	"github.com/HDIOES/su4na-API-main/rest/util"
+	"github.com/HDIOES/agg-shikimori/models"
+	"github.com/HDIOES/agg-shikimori/rest/util"
 	"github.com/pkg/errors"
 )
 
