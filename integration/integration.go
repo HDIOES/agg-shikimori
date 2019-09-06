@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HDIOES/su4na-API-main/models"
+	"github.com/HDIOES/agg-shikimori/models"
 
-	"github.com/HDIOES/su4na-API-main/rest/util"
+	"github.com/HDIOES/agg-shikimori/rest/util"
 	"github.com/pkg/errors"
 )
 
@@ -28,10 +28,12 @@ type ShikimoriJob struct {
 	StudioDao    *models.StudioDAO
 	Config       *util.Configuration
 	ShikimoriDao *ShikimoriDao
+	Runned       bool
 }
 
 //Run function
 func (sj *ShikimoriJob) Run() {
+	sj.Runned = true
 	defer log.Println("Job has been ended")
 	//at start we need to load studios and genres
 	if processStudioErr := sj.ProcessStudios(); processStudioErr != nil {
@@ -57,18 +59,29 @@ func (sj *ShikimoriJob) Run() {
 		time.Sleep(1000 * time.Millisecond)
 	}
 	//then we need to run long loading of animes by call url '/api/animes/:id'
-	var animesDtos, err = sj.GetNotProcessedExternalAnimes()
+	//TODO write test for this bug!!!
+	animesDtos, err := sj.GetNotProcessedExternalAnimes()
 	if err != nil {
 		util.HandleError(err)
 		return
 	}
-	for _, animeDto := range animesDtos {
-		processOneAmineErr := sj.ProcessOneAnime(animeDto)
-		if processOneAmineErr != nil {
-			util.HandleError(processOneAmineErr)
+	for len(animesDtos) > 0 {
+		for _, animeDto := range animesDtos {
+			processOneAmineErr := sj.ProcessOneAnime(animeDto)
+			if processOneAmineErr != nil {
+				util.HandleError(processOneAmineErr)
+				return
+			}
+			time.Sleep(1000 * time.Millisecond)
 		}
-		time.Sleep(1000 * time.Millisecond)
+		animeDtosBatch, err := sj.GetNotProcessedExternalAnimes()
+		if err != nil {
+			util.HandleError(err)
+			return
+		}
+		animesDtos = animeDtosBatch
 	}
+	sj.Runned = false
 }
 
 //GetNotProcessedExternalAnimes function
@@ -115,8 +128,14 @@ func (sj *ShikimoriJob) ProcessOneAnime(animeDto models.AnimeDTO) error {
 		if genreDtoErr != nil {
 			return errors.Wrap(genreDtoErr, "")
 		}
-		if linkErr := sj.AnimeDao.LinkAnimeAndGenre(animeDto.ID, genreDto.ID); linkErr != nil {
-			return errors.Wrap(linkErr, "")
+		hasGenre, err := sj.AnimeDao.CheckGenre(animeDto.ID, genreDto.ID)
+		if err != nil {
+			return err
+		}
+		if !*hasGenre {
+			if linkErr := sj.AnimeDao.LinkAnimeAndGenre(animeDto.ID, genreDto.ID); linkErr != nil {
+				return errors.Wrap(linkErr, "")
+			}
 		}
 	}
 	//let go to set studio for anime
@@ -125,8 +144,14 @@ func (sj *ShikimoriJob) ProcessOneAnime(animeDto models.AnimeDTO) error {
 		if studioDtoErr != nil {
 			return errors.Wrap(studioDtoErr, "")
 		}
-		if linkErr := sj.AnimeDao.LinkAnimeAndStudio(animeDto.ID, studioDto.ID); linkErr != nil {
-			return errors.Wrap(linkErr, "")
+		hasStudio, err := sj.AnimeDao.CheckStudio(animeDto.ID, studioDto.ID)
+		if err != nil {
+			return err
+		}
+		if !*hasStudio {
+			if linkErr := sj.AnimeDao.LinkAnimeAndStudio(animeDto.ID, studioDto.ID); linkErr != nil {
+				return errors.Wrap(linkErr, "")
+			}
 		}
 	}
 	log.Println("Anime has been processed")

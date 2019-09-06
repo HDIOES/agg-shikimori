@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HDIOES/su4na-API-main/rest/util"
+	"github.com/HDIOES/agg-shikimori/rest/util"
 	"github.com/pkg/errors"
 )
 
@@ -318,6 +318,34 @@ func (dao *AnimeDAO) LinkAnimeAndGenre(animeID int64, genreID int64) error {
 	return nil
 }
 
+//CheckGenre function
+func (dao *AnimeDAO) CheckGenre(animeID int64, genreID int64) (*bool, error) {
+	stmt, prepareStmtErr := dao.Db.Prepare("SELECT count(*) FROM anime_genre WHERE anime_id = $1 AND genre_id = $2")
+	if prepareStmtErr != nil {
+		return nil, errors.Wrap(prepareStmtErr, "")
+	}
+	defer stmt.Close()
+	result, stmtErr := stmt.Query(animeID, genreID)
+	if stmtErr != nil {
+		return nil, errors.Wrap(stmtErr, "")
+	}
+	defer result.Close()
+	if result.Next() {
+		var count sql.NullInt64
+		result.Scan(&count)
+		if count.Valid {
+			value := false
+			if count.Int64 > 0 {
+				value = true
+				return &value, nil
+			}
+			return &value, nil
+		}
+		return nil, errors.New("Error of checking genre from anime")
+	}
+	return nil, errors.New("Error of checking genre from anime")
+}
+
 //LinkAnimeAndStudio function
 func (dao *AnimeDAO) LinkAnimeAndStudio(animeID int64, studioID int64) error {
 	tx, beginErr := dao.Db.Begin()
@@ -337,6 +365,34 @@ func (dao *AnimeDAO) LinkAnimeAndStudio(animeID int64, studioID int64) error {
 		return rollbackTransaction(tx, errors.Wrap(commitErr, ""))
 	}
 	return nil
+}
+
+//CheckStudio function
+func (dao *AnimeDAO) CheckStudio(animeID int64, studioID int64) (*bool, error) {
+	stmt, prepareStmtErr := dao.Db.Prepare("SELECT count(*) FROM anime_studio WHERE anime_id = $1 AND studio_id = $2")
+	if prepareStmtErr != nil {
+		return nil, errors.Wrap(prepareStmtErr, "")
+	}
+	defer stmt.Close()
+	result, stmtErr := stmt.Query(animeID, studioID)
+	if stmtErr != nil {
+		return nil, errors.Wrap(stmtErr, "")
+	}
+	defer result.Close()
+	if result.Next() {
+		var count sql.NullInt64
+		result.Scan(&count)
+		if count.Valid {
+			value := false
+			if count.Int64 > 0 {
+				value = true
+				return &value, nil
+			}
+			return &value, nil
+		}
+		return nil, errors.New("Error of checking studio from anime")
+	}
+	return nil, errors.New("Error of checking studio from anime")
 }
 
 //Update function
@@ -546,14 +602,14 @@ type AnimeQueryBuilder struct {
 	Ids        []string
 	ExcludeIds []string
 	SQLQuery   strings.Builder
-	Processed  bool
+	Processed  *bool
 	CountOnly  bool
 	RowNumber  int64
 }
 
 //SetProcessed function
 func (aqb *AnimeQueryBuilder) SetProcessed(processed bool) {
-	aqb.Processed = processed
+	aqb.Processed = &processed
 }
 
 //AddExcludeID function
@@ -840,7 +896,7 @@ func (aqb *AnimeQueryBuilder) Build() (string, []interface{}) {
 		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))
 		args = append(args, aqb.Score)
 	}
-	if aqb.Processed == true {
+	if aqb.Processed != nil {
 		countOfParameter++
 		aqb.SQLQuery.WriteString(" AND animes.processed = $")
 		aqb.SQLQuery.WriteString(strconv.Itoa(countOfParameter))

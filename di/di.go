@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/HDIOES/su4na-API-main/integration"
-	"github.com/HDIOES/su4na-API-main/models"
-	"github.com/HDIOES/su4na-API-main/rest"
-	"github.com/HDIOES/su4na-API-main/rest/util"
+	"github.com/HDIOES/agg-shikimori/integration"
+	"github.com/HDIOES/agg-shikimori/models"
+	"github.com/HDIOES/agg-shikimori/rest"
+	"github.com/HDIOES/agg-shikimori/rest/util"
 	"github.com/gorilla/mux"
 	loghttp "github.com/motemen/go-loghttp"
 	"github.com/ory/dockertest"
@@ -176,7 +176,8 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 		findNewHandler *rest.FindNewHandler,
 		randomAnimeHandler *rest.RandomAnimeHandler,
 		studioHandler *rest.StudioHandler,
-		searchAnimeHandler *rest.SearchAnimeHandler) *mux.Router {
+		searchAnimeHandler *rest.SearchAnimeHandler,
+		shikimoriJob *integration.ShikimoriJob) *mux.Router {
 		router := mux.NewRouter()
 		router.Handle("/api/animes/random", randomAnimeHandler).
 			Methods("GET")
@@ -192,6 +193,11 @@ func CreateDI(configPath, migrationPath string, test bool) *dig.Container {
 			Methods("GET")
 		router.Handle("/api/news", nil).
 			Methods("DELETE")
+		router.HandleFunc("/api/job", func(w http.ResponseWriter, r *http.Request) {
+			if !shikimoriJob.Runned {
+				go shikimoriJob.Run()
+			}
+		}).Methods("GET")
 		http.Handle("/", router)
 		return router
 	})

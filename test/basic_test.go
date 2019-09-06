@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/HDIOES/su4na-API-main/models"
-	"github.com/HDIOES/su4na-API-main/rest/util"
+	"github.com/HDIOES/agg-shikimori/models"
+	"github.com/HDIOES/agg-shikimori/rest/util"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -17,7 +17,7 @@ import (
 
 	"go.uber.org/dig"
 
-	"github.com/HDIOES/su4na-API-main/di"
+	"github.com/HDIOES/agg-shikimori/di"
 	"github.com/ory/dockertest"
 	migrate "github.com/rubenv/sql-migrate"
 )
